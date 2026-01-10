@@ -10,6 +10,11 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		AAAA000100010001 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010002 /* AuthManager.swift */; };
+		AAAA000100010003 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010004 /* AuthView.swift */; };
+		AAAA000100010005 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010006 /* HomeView.swift */; };
+		AAAA000100010007 /* GlassTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010008 /* GlassTextField.swift */; };
+		AAAA000100010009 /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA00010001000A /* GlassButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +22,11 @@
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* JanusLeaf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JanusLeaf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AAAA000100010002 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		AAAA000100010004 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		AAAA000100010006 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		AAAA000100010008 /* GlassTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassTextField.swift; sourceTree = "<group>"; };
+		AAAA00010001000A /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,10 +68,31 @@
 			children = (
 				7555FF82242A565900829871 /* ContentView.swift */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
+				AAAA000100010002 /* AuthManager.swift */,
+				AAAA00010001000B /* Views */,
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 			);
 			path = iosApp;
+			sourceTree = "<group>";
+		};
+		AAAA00010001000B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AAAA000100010004 /* AuthView.swift */,
+				AAAA000100010006 /* HomeView.swift */,
+				AAAA00010001000C /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AAAA00010001000C /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				AAAA000100010008 /* GlassTextField.swift */,
+				AAAA00010001000A /* GlassButton.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -137,6 +168,11 @@
 			files = (
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
+				AAAA000100010001 /* AuthManager.swift in Sources */,
+				AAAA000100010003 /* AuthView.swift in Sources */,
+				AAAA000100010005 /* HomeView.swift in Sources */,
+				AAAA000100010007 /* GlassTextField.swift in Sources */,
+				AAAA000100010009 /* GlassButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,7 +317,9 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../composeApp/build/bin/iosSimulatorArm64/debugFramework",
+					"$(SRCROOT)/../composeApp/build/bin/iosArm64/debugFramework",
+					"$(SRCROOT)/../composeApp/build/bin/iosX64/debugFramework",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -292,7 +330,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
-					ComposeApp,
+					Shared,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.janusleaf.app;
 				PRODUCT_NAME = JanusLeaf;
@@ -310,7 +348,9 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../composeApp/build/bin/iosSimulatorArm64/releaseFramework",
+					"$(SRCROOT)/../composeApp/build/bin/iosArm64/releaseFramework",
+					"$(SRCROOT)/../composeApp/build/bin/iosX64/releaseFramework",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -321,7 +361,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-framework",
-					ComposeApp,
+					Shared,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.janusleaf.app;
 				PRODUCT_NAME = JanusLeaf;

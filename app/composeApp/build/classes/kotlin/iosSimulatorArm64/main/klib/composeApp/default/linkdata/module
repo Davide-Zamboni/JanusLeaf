@@ -1,2 +1,2 @@
 
-<JanusLeafApp:composeApp>:com.janusleaf.app:com.janusleaf.app.data.local:com.janusleaf.app.data.remote:!com.janusleaf.app.data.remote.dto:!com.janusleaf.app.data.repository:com.janusleaf.app.di:com.janusleaf.app.domain.model:#com.janusleaf.app.domain.repository:#com.janusleaf.app.presentation.auth:)com.janusleaf.app.presentation.components:#com.janusleaf.app.presentation.home:$com.janusleaf.app.presentation.theme:+janusleafapp.composeapp.generated.resources
+<JanusLeafApp:composeApp>:com.janusleaf.app:com.janusleaf.app.data.local:com.janusleaf.app.data.remote:!com.janusleaf.app.data.remote.dto:!com.janusleaf.app.data.repository:com.janusleaf.app.domain.model:#com.janusleaf.app.domain.repository:com.janusleaf.app.ios

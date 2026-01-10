@@ -1,10 +1,13 @@
 import SwiftUI
 
 @main
-struct iOSApp: App {
+struct JanusLeafApp: App {
+    @StateObject private var authManager = AuthManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(authManager)
         }
     }
 }

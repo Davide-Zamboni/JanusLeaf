@@ -1,22 +1,21 @@
 import SwiftUI
-import ComposeApp
 
 struct ContentView: View {
-    var body: some View {
-        ComposeView()
-            .ignoresSafeArea(.all)
-    }
-}
-
-struct ComposeView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
-    }
+    @EnvironmentObject var authManager: AuthManager
     
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+    var body: some View {
+        Group {
+            if authManager.isAuthenticated {
+                HomeView()
+            } else {
+                AuthView()
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(AuthManager())
 }
