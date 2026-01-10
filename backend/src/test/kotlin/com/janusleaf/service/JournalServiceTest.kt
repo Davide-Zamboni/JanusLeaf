@@ -306,6 +306,7 @@ class JournalServiceTest {
 
             every { journalEntryRepository.findByUserIdAndId(testUserId, entryId) } returns entry
             every { journalEntryRepository.saveAndFlush(any()) } answers { firstArg() }
+            every { journalEntryRepository.resetMoodScore(entryId) } returns 1
 
             // When
             val response = journalService.updateBody(testUserId, entryId, request)
@@ -324,6 +325,7 @@ class JournalServiceTest {
 
             every { journalEntryRepository.findByUserIdAndId(testUserId, entryId) } returns entry
             every { journalEntryRepository.saveAndFlush(any()) } answers { firstArg() }
+            every { journalEntryRepository.resetMoodScore(entryId) } returns 1
 
             // When
             val response = journalService.updateBody(testUserId, entryId, request)

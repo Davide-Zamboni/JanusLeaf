@@ -24,6 +24,9 @@ struct JournalEditorView: View {
     @State private var showErrorBanner = false
     private let failureThreshold = 3
     
+    // Strikethrough visibility toggle
+    @State private var showStrikethrough = true
+    
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
     
@@ -142,6 +145,18 @@ struct JournalEditorView: View {
                 
                 Spacer()
                 
+                // Strikethrough visibility toggle
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        showStrikethrough.toggle()
+                    }
+                }) {
+                    Image(systemName: showStrikethrough ? "eye" : "eye.slash")
+                        .font(.system(size: 18))
+                        .foregroundColor(showStrikethrough ? .white.opacity(0.7) : .orange.opacity(0.8))
+                }
+                .padding(.trailing, 8)
+                
                 Menu {
                     Button(role: .destructive) { showDeleteConfirmation = true } label: {
                         Label("Delete", systemImage: "trash")
@@ -195,7 +210,8 @@ struct JournalEditorView: View {
                 MarkdownTextEditor(
                     text: $bodyText,
                     placeholder: "Start writing...",
-                    isFocused: $isEditorFocused
+                    isFocused: $isEditorFocused,
+                    showStrikethrough: showStrikethrough
                 ) { newValue in
                     hasUnsavedBodyChanges = true
                     journalManager.updateBody(newValue, for: entryId)

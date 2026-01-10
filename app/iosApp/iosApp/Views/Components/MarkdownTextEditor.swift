@@ -12,17 +12,20 @@ struct MarkdownTextEditor: View {
     @FocusState.Binding var isFocused: Bool
     
     let placeholder: String
+    let showStrikethrough: Bool
     let onTextChange: ((String) -> Void)?
     
     init(
         text: Binding<String>,
         placeholder: String = "Start writing...",
         isFocused: FocusState<Bool>.Binding,
+        showStrikethrough: Bool = true,
         onTextChange: ((String) -> Void)? = nil
     ) {
         self._markdownText = text
         self.placeholder = placeholder
         self._isFocused = isFocused
+        self.showStrikethrough = showStrikethrough
         self.onTextChange = onTextChange
     }
     
@@ -40,6 +43,7 @@ struct MarkdownTextEditor: View {
             AppendOnlyTextView(
                 markdownText: $markdownText,
                 isFocused: $internalIsFocused,
+                showStrikethrough: showStrikethrough,
                 onTextChange: onTextChange
             )
             .frame(minHeight: 300)
@@ -58,6 +62,7 @@ struct MarkdownTextEditor: View {
 struct AppendOnlyTextView: UIViewRepresentable {
     @Binding var markdownText: String
     @Binding var isFocused: Bool
+    let showStrikethrough: Bool
     let onTextChange: ((String) -> Void)?
     
     func makeUIView(context: Context) -> UITextView {
@@ -73,22 +78,35 @@ struct AppendOnlyTextView: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
         
         // Set initial content from markdown
-        textView.attributedText = MarkdownParser.toAttributedString(markdownText)
+        textView.attributedText = MarkdownParser.toAttributedString(markdownText, showStrikethrough: showStrikethrough)
         
         // Store coordinator reference and track loaded markdown
         context.coordinator.textView = textView
         context.coordinator.lastLoadedMarkdown = markdownText
+        context.coordinator.showStrikethrough = showStrikethrough
         
         return textView
     }
     
     func updateUIView(_ textView: UITextView, context: Context) {
+        // Check if showStrikethrough changed - need to re-render
+        let strikethroughChanged = context.coordinator.showStrikethrough != showStrikethrough
+        context.coordinator.showStrikethrough = showStrikethrough
+        
         // Update content if markdown changed from outside (e.g., loading from backend)
-        // Only update if not currently editing to avoid cursor jumps
-        if !textView.isFirstResponder {
+        // Or if showStrikethrough toggle changed
+        if strikethroughChanged {
+            // Re-render with new strikethrough visibility setting
+            let cursorPosition = textView.selectedRange
+            textView.attributedText = MarkdownParser.toAttributedString(markdownText, showStrikethrough: showStrikethrough)
+            // Restore cursor position
+            if cursorPosition.location <= textView.text.count {
+                textView.selectedRange = cursorPosition
+            }
+        } else if !textView.isFirstResponder {
             // Check if the source markdown changed (not just the rendered content)
             if context.coordinator.lastLoadedMarkdown != markdownText {
-                textView.attributedText = MarkdownParser.toAttributedString(markdownText)
+                textView.attributedText = MarkdownParser.toAttributedString(markdownText, showStrikethrough: showStrikethrough)
                 context.coordinator.lastLoadedMarkdown = markdownText
             }
         }
@@ -113,6 +131,9 @@ struct AppendOnlyTextView: UIViewRepresentable {
         
         // Track the last loaded markdown to detect external changes
         var lastLoadedMarkdown: String = ""
+        
+        // Track strikethrough visibility setting
+        var showStrikethrough: Bool = true
         
         // Track the last known length to detect backspace
         private var lastTextLength: Int = 0
@@ -222,26 +243,28 @@ struct AppendOnlyTextView: UIViewRepresentable {
             
             let mutableAttr = NSMutableAttributedString(attributedString: textView.attributedText)
             
-            // Add strikethrough
+            // Add strikethrough attributes (needed for markdown conversion)
             mutableAttr.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
             mutableAttr.addAttribute(.strikethroughColor, value: UIColor.white.withAlphaComponent(0.6), range: range)
-            
-            // Also dim the text slightly
             mutableAttr.addAttribute(.foregroundColor, value: UIColor.white.withAlphaComponent(0.5), range: range)
             
+            // Temporarily set the attributed text to convert to markdown
             textView.attributedText = mutableAttr
             
-            // Set cursor BEFORE the strikethrough text so backspace continues working backwards
-            let newCursorPosition = range.location
-            if let newPosition = textView.position(from: textView.beginningOfDocument, offset: newCursorPosition) {
-                textView.selectedTextRange = textView.textRange(from: newPosition, to: newPosition)
-            }
-            
-            // Update markdown
+            // Update markdown (backend always gets full strikethrough)
             let markdown = MarkdownParser.toMarkdown(textView.attributedText)
             parent.markdownText = markdown
-            lastLoadedMarkdown = markdown  // Track our own changes
+            lastLoadedMarkdown = markdown
             parent.onTextChange?(markdown)
+            
+            // Re-render with current showStrikethrough setting
+            // This will hide the struck text if toggle is off
+            textView.attributedText = MarkdownParser.toAttributedString(markdown, showStrikethrough: showStrikethrough)
+            
+            // Set cursor to end of text for intuitive continued editing
+            if let endPosition = textView.position(from: textView.endOfDocument, offset: 0) {
+                textView.selectedTextRange = textView.textRange(from: endPosition, to: endPosition)
+            }
             
             isProcessingStrikethrough = false
             
@@ -260,12 +283,15 @@ struct AppendOnlyTextView: UIViewRepresentable {
 struct MarkdownParser {
     
     /// Convert markdown string to NSAttributedString for display
-    static func toAttributedString(_ markdown: String) -> NSAttributedString {
+    /// - Parameters:
+    ///   - markdown: The markdown string to convert
+    ///   - showStrikethrough: If true, shows strikethrough text with styling. If false, hides strikethrough text entirely.
+    static func toAttributedString(_ markdown: String, showStrikethrough: Bool = true) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let lines = markdown.components(separatedBy: "\n")
         
         for (index, line) in lines.enumerated() {
-            let attributedLine = parseLine(line)
+            let attributedLine = parseLine(line, showStrikethrough: showStrikethrough)
             result.append(attributedLine)
             
             if index < lines.count - 1 {
@@ -284,15 +310,15 @@ struct MarkdownParser {
         return result
     }
     
-    private static func parseLine(_ line: String) -> NSAttributedString {
+    private static func parseLine(_ line: String, showStrikethrough: Bool) -> NSAttributedString {
         let baseFont: UIFont = .systemFont(ofSize: 17)
         let baseColor: UIColor = .white
         
         // Parse inline formatting
-        return parseInlineFormatting(line, baseFont: baseFont, baseColor: baseColor)
+        return parseInlineFormatting(line, baseFont: baseFont, baseColor: baseColor, showStrikethrough: showStrikethrough)
     }
     
-    private static func parseInlineFormatting(_ text: String, baseFont: UIFont, baseColor: UIColor) -> NSAttributedString {
+    private static func parseInlineFormatting(_ text: String, baseFont: UIFont, baseColor: UIColor, showStrikethrough: Bool) -> NSAttributedString {
         let result = NSMutableAttributedString()
         var currentIndex = text.startIndex
         
@@ -302,13 +328,27 @@ struct MarkdownParser {
                 let afterOpen = text.index(currentIndex, offsetBy: 2)
                 if afterOpen < text.endIndex, let closeRange = text[afterOpen...].range(of: "~~") {
                     let strikeContent = String(text[afterOpen..<closeRange.lowerBound])
-                    let strikeAttr = NSMutableAttributedString(string: strikeContent, attributes: [
-                        .font: baseFont,
-                        .foregroundColor: baseColor.withAlphaComponent(0.5),
-                        .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                        .strikethroughColor: baseColor.withAlphaComponent(0.6)
-                    ])
-                    result.append(strikeAttr)
+                    
+                    if showStrikethrough {
+                        // Show strikethrough with styling
+                        let strikeAttr = NSMutableAttributedString(string: strikeContent, attributes: [
+                            .font: baseFont,
+                            .foregroundColor: baseColor.withAlphaComponent(0.5),
+                            .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                            .strikethroughColor: baseColor.withAlphaComponent(0.6)
+                        ])
+                        result.append(strikeAttr)
+                    } else {
+                        // Hide strikethrough but keep in attributed string for markdown conversion
+                        // Use tiny font and zero opacity so text is invisible but still present
+                        let hiddenAttr = NSMutableAttributedString(string: strikeContent, attributes: [
+                            .font: UIFont.systemFont(ofSize: 0.01),
+                            .foregroundColor: UIColor.clear,
+                            .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                            .strikethroughColor: UIColor.clear
+                        ])
+                        result.append(hiddenAttr)
+                    }
                     
                     currentIndex = closeRange.upperBound
                     continue

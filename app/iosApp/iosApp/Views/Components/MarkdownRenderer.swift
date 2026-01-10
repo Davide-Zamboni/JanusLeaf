@@ -9,17 +9,20 @@ struct MarkdownRenderer: View {
     let lineLimit: Int?
     let baseColor: Color
     let baseFontSize: CGFloat
+    let showStrikethrough: Bool
     
     init(
         _ markdown: String,
         lineLimit: Int? = nil,
         baseColor: Color = .white,
-        baseFontSize: CGFloat = 15
+        baseFontSize: CGFloat = 15,
+        showStrikethrough: Bool = true
     ) {
         self.markdown = markdown
         self.lineLimit = lineLimit
         self.baseColor = baseColor
         self.baseFontSize = baseFontSize
+        self.showStrikethrough = showStrikethrough
     }
     
     var body: some View {
@@ -72,7 +75,8 @@ struct MarkdownRenderer: View {
             to: processedLine,
             fontSize: fontSize,
             fontWeight: fontWeight,
-            textColor: textColor
+            textColor: textColor,
+            showStrikethrough: showStrikethrough
         )
     }
     
@@ -80,7 +84,8 @@ struct MarkdownRenderer: View {
         to text: String,
         fontSize: CGFloat,
         fontWeight: Font.Weight,
-        textColor: Color
+        textColor: Color,
+        showStrikethrough: Bool
     ) -> AttributedString {
         var result = AttributedString()
         var currentText = text
@@ -105,15 +110,18 @@ struct MarkdownRenderer: View {
             if let closingRange = afterFirstMarker.range(of: "~~") {
                 let strikeContent = String(afterFirstMarker[..<closingRange.lowerBound])
                 
-                // Apply strikethrough to content
-                let strikeAttr = applyBoldFormatting(
-                    to: strikeContent,
-                    fontSize: fontSize,
-                    fontWeight: fontWeight,
-                    textColor: textColor.opacity(0.5),
-                    isStrikethrough: true
-                )
-                result.append(strikeAttr)
+                if showStrikethrough {
+                    // Apply strikethrough to content with styling
+                    let strikeAttr = applyBoldFormatting(
+                        to: strikeContent,
+                        fontSize: fontSize,
+                        fontWeight: fontWeight,
+                        textColor: textColor.opacity(0.5),
+                        isStrikethrough: true
+                    )
+                    result.append(strikeAttr)
+                }
+                // If not showing strikethrough, skip the content entirely
                 
                 currentText = String(afterFirstMarker[closingRange.upperBound...])
             } else {

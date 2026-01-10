@@ -395,8 +395,7 @@ struct JournalEntryCard: View {
                     MarkdownRenderer(
                         entry.bodyPreview,
                         lineLimit: 3,
-                        baseColor: .white.opacity(0.7),
-                        baseFontSize: 15
+                        baseColor: .white.opacity(0.7)
                     )
                 }
                 
