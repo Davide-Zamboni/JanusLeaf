@@ -1,2 +1,0 @@
-
-<JanusLeafApp:composeApp>:com.janusleaf.app:com.janusleaf.app.data.local:com.janusleaf.app.data.remote:!com.janusleaf.app.data.remote.dto:!com.janusleaf.app.data.repository:com.janusleaf.app.domain.model:#com.janusleaf.app.domain.repository:com.janusleaf.app.ios
