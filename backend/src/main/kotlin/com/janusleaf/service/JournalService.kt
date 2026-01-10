@@ -122,6 +122,7 @@ class JournalService(
         }
 
         entry.body = request.body
+        entry.moodScore = null  // Reset mood score - will be recalculated by AI
         val savedEntry = journalEntryRepository.saveAndFlush(entry)
         
         // Queue async mood analysis (debounced via database - multiple rapid edits won't spam the API)
