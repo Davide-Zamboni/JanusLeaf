@@ -115,12 +115,13 @@ class JournalRepositoryImpl(
     override suspend fun updateMetadata(
         id: String,
         title: String?,
-        moodScore: Int?
+        moodScore: Int?,
+        expectedVersion: Long?
     ): JournalResult<Journal> {
         val accessToken = getAccessToken()
             ?: return JournalResult.Error(JournalError.Unauthorized)
         
-        return when (val result = apiService.updateMetadata(accessToken, id, title, moodScore)) {
+        return when (val result = apiService.updateMetadata(accessToken, id, title, moodScore, expectedVersion)) {
             is JournalResult.Success -> {
                 val journal = result.data.toDomain()
                 Napier.d("Journal metadata updated: $id", tag = "JournalRepository")

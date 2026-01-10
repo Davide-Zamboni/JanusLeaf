@@ -24,7 +24,8 @@ data class UpdateJournalBodyRequestDto(
 @Serializable
 data class UpdateJournalMetadataRequestDto(
     val title: String? = null,
-    val moodScore: Int? = null
+    val moodScore: Int? = null,
+    val expectedVersion: Long? = null
 )
 
 // ==================== Response DTOs ====================

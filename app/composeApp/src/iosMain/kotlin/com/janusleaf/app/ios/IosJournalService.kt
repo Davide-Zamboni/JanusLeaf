@@ -248,7 +248,10 @@ class IosJournalService {
         scope.launch {
             _isLoading.value = true
             
-            when (val result = repository.updateMetadata(id, title, moodScore)) {
+            // Get current version for optimistic locking
+            val currentVersion = _currentEntry.value?.version
+            
+            when (val result = repository.updateMetadata(id, title, moodScore, currentVersion)) {
                 is JournalResult.Success -> {
                     _currentEntry.value = result.data
                     // Update in list

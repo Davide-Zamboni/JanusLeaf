@@ -67,7 +67,8 @@ interface JournalRepository {
     suspend fun updateMetadata(
         id: String,
         title: String? = null,
-        moodScore: Int? = null
+        moodScore: Int? = null,
+        expectedVersion: Long? = null
     ): JournalResult<Journal>
     
     /**

@@ -14,13 +14,13 @@ struct JournalEditorView: View {
     @State private var entryDate: Kotlinx_datetimeLocalDate? = nil
     @State private var version: Int64 = 0
     
-    @State private var isEditingTitle = false
     @State private var showMoodPicker = false
     @State private var showDeleteConfirmation = false
     @State private var hasUnsavedChanges = false
     @State private var isLoading = true
     
     @FocusState private var isEditorFocused: Bool
+    @FocusState private var isTitleFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
@@ -128,24 +128,20 @@ struct JournalEditorView: View {
     private var editorContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Title
-                Button(action: { isEditingTitle = true }) {
-                    if isEditingTitle {
-                        TextField("Title", text: $title)
-                            .font(.title.bold())
-                            .foregroundColor(.white)
-                            .onSubmit {
-                                isEditingTitle = false
-                                saveTitle()
-                            }
-                    } else {
-                        Text(title.isEmpty ? "Untitled" : title)
-                            .font(.title.bold())
-                            .foregroundColor(title.isEmpty ? .white.opacity(0.3) : .white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                // Title - editable TextField
+                TextField("Enter title...", text: $title)
+                    .font(.title.bold())
+                    .foregroundColor(.white)
+                    .focused($isTitleFocused)
+                    .onSubmit {
+                        saveTitle()
                     }
-                }
-                .buttonStyle(.plain)
+                    .onChange(of: isTitleFocused) { _, focused in
+                        // Save when losing focus
+                        if !focused && !title.isEmpty {
+                            saveTitle()
+                        }
+                    }
                 
                 // Body Text Editor
                 ZStack(alignment: .topLeading) {
@@ -216,7 +212,13 @@ struct JournalEditorView: View {
     
     private func saveTitle() {
         guard !title.isEmpty else { return }
-        journalManager.updateTitle(title, for: entryId) { _ in }
+        journalManager.updateTitle(title, for: entryId) { success in
+            if success {
+                print("Title saved successfully")
+            } else {
+                print("Failed to save title")
+            }
+        }
     }
     
     private func updateMoodScore(_ score: Int) {

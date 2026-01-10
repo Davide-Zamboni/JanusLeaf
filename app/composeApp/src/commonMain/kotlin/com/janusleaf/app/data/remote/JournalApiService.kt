@@ -104,11 +104,12 @@ class JournalApiService(
         accessToken: String,
         id: String,
         title: String? = null,
-        moodScore: Int? = null
+        moodScore: Int? = null,
+        expectedVersion: Long? = null
     ): JournalResult<JournalResponseDto> = safeApiCall {
         httpClient.patch("$baseUrl${ApiConfig.Endpoints.journalById(id)}") {
             header(HttpHeaders.Authorization, "Bearer $accessToken")
-            setBody(UpdateJournalMetadataRequestDto(title, moodScore))
+            setBody(UpdateJournalMetadataRequestDto(title, moodScore, expectedVersion))
         }
     }
     
