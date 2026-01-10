@@ -62,7 +62,7 @@ class JournalControllerIntegrationTest {
         val result = mockMvc.perform(
             post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))d
+                .content(objectMapper.writeValueAsString(request))
         ).andReturn()
         val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
         return response.accessToken
