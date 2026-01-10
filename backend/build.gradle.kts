@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     id("org.springframework.boot") version "3.2.2"
@@ -47,6 +48,7 @@ repositories {
 dependencies {
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-webflux") // WebClient for OpenRouter API
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -71,6 +73,9 @@ dependencies {
     // OpenAI (for later)
     implementation("com.aallam.openai:openai-client:3.6.2")
     implementation("io.ktor:ktor-client-okhttp:2.3.7")
+    
+    // Netty native DNS resolver for macOS (fixes DNS resolution warnings)
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.1.107.Final:osx-aarch_64")
     
     // Dev tools
     developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -150,4 +155,24 @@ allOpen {
     annotation("jakarta.persistence.Entity")
     annotation("jakarta.persistence.MappedSuperclass")
     annotation("jakarta.persistence.Embeddable")
+}
+
+// ============================================
+// Load Secrets for bootRun
+// ============================================
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    doFirst {
+        val secretsFile = file("secrets.properties")
+        if (secretsFile.exists()) {
+            val props = Properties()
+            secretsFile.inputStream().use { stream -> props.load(stream) }
+            for (key in props.stringPropertyNames()) {
+                environment(key, props.getProperty(key))
+            }
+            println("✅ Loaded secrets from secrets.properties")
+        } else {
+            println("⚠️  secrets.properties not found - some features may be disabled")
+            println("   Copy secrets.properties.example to secrets.properties and fill in your values")
+        }
+    }
 }

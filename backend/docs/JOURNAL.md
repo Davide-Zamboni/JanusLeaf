@@ -13,8 +13,50 @@ The Journal API allows users to create, read, update, and delete their daily jou
 - 📝 **Create entries** with optional title (defaults to today's date)
 - ✏️ **Google Docs-like editing** - Update body content with version control for concurrent edit detection
 - 📅 **Date-based entries** - Each entry has an associated date
-- 🤖 **Mood scoring** - AI-generated positivity score from 1 to 10
+- 🤖 **AI mood scoring** - Automatically generated mood score (1-10) using OpenRouter API
 - 🔒 **User isolation** - Users can only access their own entries
+
+### AI Mood Scoring
+
+Mood scores are **automatically generated** by AI when you update the body of a journal entry:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   AI MOOD ANALYSIS FLOW                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. User updates entry body                                 │
+│     → PATCH /api/journal/{id}/body                          │
+│                                                             │
+│  2. Backend queues mood analysis (database-backed)          │
+│     → Creates/updates record in mood_analysis_queue         │
+│     → Sets scheduled_for = now + 5 seconds                  │
+│     → If more edits come, scheduled_for resets              │
+│                                                             │
+│  3. Scheduled job polls queue every 5 seconds               │
+│     → Picks up entries where scheduled_for <= now           │
+│     → AI analyzes journal content                           │
+│     → Updates mood score, deletes queue entry               │
+│                                                             │
+│  4. Next GET returns updated moodScore                      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why database-backed queue?**
+- ✅ Survives server restarts
+- ✅ Works with multiple server instances
+- ✅ Observable (can query pending analyses)
+- ✅ Reliable - no lost work on crashes
+
+**Score Guide:**
+- **1-2**: Very negative (depressed, hopeless)
+- **3-4**: Negative (sad, frustrated, anxious)
+- **5-6**: Neutral to mixed feelings
+- **7-8**: Positive (happy, content, grateful)
+- **9-10**: Very positive (joyful, elated)
+
+> ⚠️ **Note:** `moodScore` cannot be manually set by users. It is exclusively AI-generated.
 
 ### Version Control (Optimistic Locking)
 
@@ -265,7 +307,9 @@ Authorization: Bearer <access_token>
 
 ### 6. Update Entry Metadata
 
-Update title and/or mood score of a journal entry.
+Update the title of a journal entry.
+
+> **Note:** `moodScore` is AI-generated and cannot be set manually.
 
 ```
 PATCH /api/journal/{id}
@@ -279,15 +323,13 @@ Authorization: Bearer <access_token>
 **Request Body:**
 ```json
 {
-  "title": "My Wonderful Day",
-  "moodScore": 9
+  "title": "My Wonderful Day"
 }
 ```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `title` | `String` | No | New title (max 255 chars) |
-| `moodScore` | `Integer` | No | Mood score (1-10) |
 
 **Response:** `200 OK`
 ```json
@@ -295,7 +337,7 @@ Authorization: Bearer <access_token>
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "title": "My Wonderful Day",
   "body": "Today was wonderful...",
-  "moodScore": 9,
+  "moodScore": 8,
   "entryDate": "2024-01-15",
   "version": 3,
   "createdAt": "2026-01-10T09:00:00Z",
@@ -304,7 +346,6 @@ Authorization: Bearer <access_token>
 ```
 
 **Error Responses:**
-- `400 Bad Request` - Invalid mood score (must be 1-10)
 - `404 Not Found` - Entry not found
 
 ---

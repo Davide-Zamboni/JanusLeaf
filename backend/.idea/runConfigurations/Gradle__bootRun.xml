@@ -6,7 +6,6 @@
           <entry key="DATABASE_PASSWORD" value="janusleaf" />
           <entry key="DATABASE_URL" value="jdbc:postgresql://localhost:5432/janusleaf" />
           <entry key="DATABASE_USERNAME" value="janusleaf" />
-          <entry key="JWT_SECRET" value="dev-secret-key-that-is-at-least-256-bits-long-for-local-development" />
         </map>
       </option>
       <option name="executionName" />

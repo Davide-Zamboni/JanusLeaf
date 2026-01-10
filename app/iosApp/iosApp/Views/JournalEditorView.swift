@@ -14,7 +14,6 @@ struct JournalEditorView: View {
     @State private var entryDate: Kotlinx_datetimeLocalDate? = nil
     @State private var version: Int64 = 0
     
-    @State private var showMoodPicker = false
     @State private var showDeleteConfirmation = false
     @State private var hasUnsavedChanges = false
     @State private var isLoading = true
@@ -45,11 +44,6 @@ struct JournalEditorView: View {
         } message: {
             Text("This entry will be permanently deleted.")
         }
-        .sheet(isPresented: $showMoodPicker) {
-            MoodPickerSheet(currentScore: moodScore) { score in
-                updateMoodScore(score)
-            }
-        }
     }
     
     // MARK: - Custom Navigation Bar
@@ -69,16 +63,7 @@ struct JournalEditorView: View {
                 
                 Spacer()
                 
-                Button(action: { showMoodPicker = true }) {
-                    Text(JournalManager.moodEmoji(for: moodScore))
-                        .font(.system(size: 24))
-                }
-                
                 Menu {
-                    Button { showMoodPicker = true } label: {
-                        Label("Set Mood", systemImage: "face.smiling")
-                    }
-                    Divider()
                     Button(role: .destructive) { showDeleteConfirmation = true } label: {
                         Label("Delete", systemImage: "trash")
                     }
@@ -221,11 +206,6 @@ struct JournalEditorView: View {
         }
     }
     
-    private func updateMoodScore(_ score: Int) {
-        self.moodScore = score
-        journalManager.updateMoodScore(score, for: entryId) { _ in }
-    }
-    
     private func deleteEntry() {
         journalManager.deleteEntry(id: entryId) { success in
             if success { dismiss() }
@@ -234,106 +214,6 @@ struct JournalEditorView: View {
     
     private func formatDate(_ date: Kotlinx_datetimeLocalDate) -> String {
         "\(date.month.name.prefix(3)) \(date.dayOfMonth), \(date.year)"
-    }
-}
-
-// MARK: - Mood Picker Sheet
-
-@available(iOS 17.0, *)
-struct MoodPickerSheet: View {
-    @Environment(\.dismiss) var dismiss
-    let currentScore: Int?
-    let onSelect: (Int) -> Void
-    @State private var selectedScore: Int = 5
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 24) {
-                Text(JournalManager.moodEmoji(for: selectedScore))
-                    .font(.system(size: 80))
-                    .padding(.top, 32)
-                
-                Text(moodLabel)
-                    .font(.title2.bold())
-                    .foregroundColor(.primary)
-                
-                Slider(value: Binding(
-                    get: { Double(selectedScore) },
-                    set: { selectedScore = Int($0) }
-                ), in: 1...10, step: 1)
-                .tint(JournalManager.moodColor(for: selectedScore))
-                .padding(.horizontal, 32)
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 12) {
-                    ForEach(1...10, id: \.self) { score in
-                        Button {
-                            selectedScore = score
-                        } label: {
-                            VStack {
-                                Text(JournalManager.moodEmoji(for: score))
-                                    .font(.title2)
-                                Text("\(score)")
-                                    .font(.caption)
-                            }
-                            .frame(width: 50, height: 55)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(selectedScore == score ? JournalManager.moodColor(for: score).opacity(0.3) : Color.clear)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(selectedScore == score ? JournalManager.moodColor(for: score) : Color.clear, lineWidth: 2)
-                                    )
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal)
-                
-                Spacer()
-                
-                Button {
-                    onSelect(selectedScore)
-                    dismiss()
-                } label: {
-                    Text("Set Mood")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(JournalManager.moodColor(for: selectedScore))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-            }
-            .navigationTitle("How are you feeling?")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-        .onAppear {
-            selectedScore = currentScore ?? 5
-        }
-    }
-    
-    private var moodLabel: String {
-        switch selectedScore {
-        case 1: return "Terrible"
-        case 2: return "Very Bad"
-        case 3: return "Bad"
-        case 4: return "Not Great"
-        case 5: return "Okay"
-        case 6: return "Fine"
-        case 7: return "Good"
-        case 8: return "Great"
-        case 9: return "Wonderful"
-        case 10: return "Amazing!"
-        default: return "Okay"
-        }
     }
 }
 

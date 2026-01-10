@@ -78,29 +78,5 @@ Authorization: Bearer {{accessToken}}
 
 ###
 
-### Update mood score
-PATCH http://localhost:8080/api/journal/{{journalEntryId}}
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-  "moodScore": 8
-}
-
-> {%
-    client.test("Mood score updated", function() {
-        client.assert(response.status === 200, "Response status is not 200");
-        client.assert(response.body.moodScore === 8, "Mood score not updated");
-    });
-%}
-
-###
-
-### Try invalid mood score (should fail with 400)
-PATCH http://localhost:8080/api/journal/{{journalEntryId}}
-Content-Type: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-  "moodScore": 15
-}
+### NOTE: mood_score is now AI-generated and cannot be set by users
+### The score is automatically calculated after body updates (with debouncing)
