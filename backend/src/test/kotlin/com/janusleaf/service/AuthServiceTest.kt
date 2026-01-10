@@ -5,7 +5,9 @@ import com.janusleaf.exception.InvalidCredentialsException
 import com.janusleaf.exception.InvalidTokenException
 import com.janusleaf.exception.UserAlreadyExistsException
 import com.janusleaf.exception.UserNotFoundException
+import com.janusleaf.model.RefreshToken
 import com.janusleaf.model.User
+import com.janusleaf.repository.RefreshTokenRepository
 import com.janusleaf.repository.UserRepository
 import com.janusleaf.security.JwtTokenProvider
 import io.kotest.assertions.throwables.shouldThrow
@@ -25,6 +27,7 @@ import java.util.*
 class AuthServiceTest {
 
     private lateinit var userRepository: UserRepository
+    private lateinit var refreshTokenRepository: RefreshTokenRepository
     private lateinit var passwordEncoder: PasswordEncoder
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var authService: AuthService
@@ -41,9 +44,10 @@ class AuthServiceTest {
     @BeforeEach
     fun setUp() {
         userRepository = mockk()
+        refreshTokenRepository = mockk()
         passwordEncoder = mockk()
         jwtTokenProvider = mockk()
-        authService = AuthService(userRepository, passwordEncoder, jwtTokenProvider)
+        authService = AuthService(userRepository, refreshTokenRepository, passwordEncoder, jwtTokenProvider)
     }
 
     @Nested
@@ -64,7 +68,9 @@ class AuthServiceTest {
             every { userRepository.save(any()) } answers { firstArg() }
             every { jwtTokenProvider.generateAccessToken(any(), any()) } returns "access_token"
             every { jwtTokenProvider.generateRefreshToken(any(), any()) } returns "refresh_token"
-            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 86400000L
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh_token") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
 
             // When
             val response = authService.register(request)
@@ -73,13 +79,14 @@ class AuthServiceTest {
             response.accessToken shouldBe "access_token"
             response.refreshToken shouldBe "refresh_token"
             response.tokenType shouldBe "Bearer"
-            response.expiresIn shouldBe 86400L
+            response.expiresIn shouldBe 900L
             response.user.email shouldBe "newuser@example.com"
             response.user.username shouldBe "NewUser"
 
             verify { userRepository.existsByEmail("newuser@example.com") }
             verify { passwordEncoder.encode("SecurePass123!") }
             verify { userRepository.save(any()) }
+            verify { refreshTokenRepository.save(any()) }
         }
 
         @Test
@@ -96,7 +103,9 @@ class AuthServiceTest {
             every { userRepository.save(any()) } answers { firstArg() }
             every { jwtTokenProvider.generateAccessToken(any(), any()) } returns "token"
             every { jwtTokenProvider.generateRefreshToken(any(), any()) } returns "refresh"
-            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 86400000L
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
 
             // When
             val response = authService.register(request)
@@ -143,7 +152,9 @@ class AuthServiceTest {
             every { passwordEncoder.matches("correctPassword", "hashedPassword123") } returns true
             every { jwtTokenProvider.generateAccessToken(testUser.id, testUser.email) } returns "access_token"
             every { jwtTokenProvider.generateRefreshToken(testUser.id, testUser.email) } returns "refresh_token"
-            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 86400000L
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh_token") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
 
             // When
             val response = authService.login(request)
@@ -202,7 +213,9 @@ class AuthServiceTest {
             every { passwordEncoder.matches("correctPassword", "hashedPassword123") } returns true
             every { jwtTokenProvider.generateAccessToken(any(), any()) } returns "token"
             every { jwtTokenProvider.generateRefreshToken(any(), any()) } returns "refresh"
-            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 86400000L
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
 
             // When
             authService.login(request)
@@ -214,21 +227,24 @@ class AuthServiceTest {
 
     @Nested
     @DisplayName("refreshToken()")
-    inner class RefreshToken {
+    inner class RefreshTokenTests {
 
         @Test
         fun `should refresh token successfully`() {
             // Given
             val request = RefreshTokenRequest(refreshToken = "valid_refresh_token")
             val userId = UUID.randomUUID()
+            val storedToken = mockk<RefreshToken>()
 
             every { jwtTokenProvider.validateToken("valid_refresh_token") } returns true
             every { jwtTokenProvider.getTokenType("valid_refresh_token") } returns JwtTokenProvider.TokenType.REFRESH
+            every { refreshTokenRepository.findByTokenHash(any()) } returns storedToken
+            every { storedToken.isValid() } returns true
             every { jwtTokenProvider.getUserIdFromToken("valid_refresh_token") } returns userId
             every { jwtTokenProvider.getEmailFromToken("valid_refresh_token") } returns "test@example.com"
             every { userRepository.existsById(userId) } returns true
             every { jwtTokenProvider.generateAccessToken(userId, "test@example.com") } returns "new_access_token"
-            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 86400000L
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
 
             // When
             val response = authService.refreshToken(request)
@@ -236,7 +252,7 @@ class AuthServiceTest {
             // Then
             response.accessToken shouldBe "new_access_token"
             response.tokenType shouldBe "Bearer"
-            response.expiresIn shouldBe 86400L
+            response.expiresIn shouldBe 900L
         }
 
         @Test
@@ -271,13 +287,52 @@ class AuthServiceTest {
         }
 
         @Test
+        fun `should throw InvalidTokenException when token not found in database`() {
+            // Given
+            val request = RefreshTokenRequest(refreshToken = "valid_refresh_token")
+
+            every { jwtTokenProvider.validateToken("valid_refresh_token") } returns true
+            every { jwtTokenProvider.getTokenType("valid_refresh_token") } returns JwtTokenProvider.TokenType.REFRESH
+            every { refreshTokenRepository.findByTokenHash(any()) } returns null
+
+            // When/Then
+            val exception = shouldThrow<InvalidTokenException> {
+                authService.refreshToken(request)
+            }
+            
+            exception.message shouldBe "Refresh token not found or already revoked"
+        }
+
+        @Test
+        fun `should throw InvalidTokenException when token is revoked`() {
+            // Given
+            val request = RefreshTokenRequest(refreshToken = "valid_refresh_token")
+            val storedToken = mockk<RefreshToken>()
+
+            every { jwtTokenProvider.validateToken("valid_refresh_token") } returns true
+            every { jwtTokenProvider.getTokenType("valid_refresh_token") } returns JwtTokenProvider.TokenType.REFRESH
+            every { refreshTokenRepository.findByTokenHash(any()) } returns storedToken
+            every { storedToken.isValid() } returns false
+
+            // When/Then
+            val exception = shouldThrow<InvalidTokenException> {
+                authService.refreshToken(request)
+            }
+            
+            exception.message shouldBe "Refresh token has been revoked or expired"
+        }
+
+        @Test
         fun `should throw InvalidTokenException when user no longer exists`() {
             // Given
             val request = RefreshTokenRequest(refreshToken = "valid_refresh_token")
             val deletedUserId = UUID.randomUUID()
+            val storedToken = mockk<RefreshToken>()
 
             every { jwtTokenProvider.validateToken("valid_refresh_token") } returns true
             every { jwtTokenProvider.getTokenType("valid_refresh_token") } returns JwtTokenProvider.TokenType.REFRESH
+            every { refreshTokenRepository.findByTokenHash(any()) } returns storedToken
+            every { storedToken.isValid() } returns true
             every { jwtTokenProvider.getUserIdFromToken("valid_refresh_token") } returns deletedUserId
             every { jwtTokenProvider.getEmailFromToken("valid_refresh_token") } returns "deleted@example.com"
             every { userRepository.existsById(deletedUserId) } returns false
@@ -288,6 +343,70 @@ class AuthServiceTest {
             }
             
             exception.message shouldBe "User no longer exists"
+        }
+    }
+
+    @Nested
+    @DisplayName("logout()")
+    inner class Logout {
+
+        @Test
+        fun `should revoke refresh token on logout`() {
+            // Given
+            val request = LogoutRequest(refreshToken = "valid_refresh_token")
+            val storedToken = mockk<RefreshToken>(relaxed = true)
+
+            every { jwtTokenProvider.validateToken("valid_refresh_token") } returns true
+            every { refreshTokenRepository.findByTokenHash(any()) } returns storedToken
+
+            // When
+            authService.logout(request)
+
+            // Then
+            verify { storedToken.revoke() }
+        }
+
+        @Test
+        fun `should handle logout gracefully when token is invalid`() {
+            // Given
+            val request = LogoutRequest(refreshToken = "invalid_token")
+
+            every { jwtTokenProvider.validateToken("invalid_token") } returns false
+
+            // When/Then - should not throw
+            authService.logout(request)
+        }
+
+        @Test
+        fun `should handle logout gracefully when token not found`() {
+            // Given
+            val request = LogoutRequest(refreshToken = "valid_but_not_stored")
+
+            every { jwtTokenProvider.validateToken("valid_but_not_stored") } returns true
+            every { refreshTokenRepository.findByTokenHash(any()) } returns null
+
+            // When/Then - should not throw
+            authService.logout(request)
+        }
+    }
+
+    @Nested
+    @DisplayName("logoutAll()")
+    inner class LogoutAll {
+
+        @Test
+        fun `should revoke all refresh tokens for user`() {
+            // Given
+            val userId = UUID.randomUUID()
+
+            every { refreshTokenRepository.revokeAllByUserId(userId, any()) } returns 3
+
+            // When
+            val count = authService.logoutAll(userId)
+
+            // Then
+            count shouldBe 3
+            verify { refreshTokenRepository.revokeAllByUserId(userId, any()) }
         }
     }
 
@@ -363,7 +482,7 @@ class AuthServiceTest {
     inner class ChangePassword {
 
         @Test
-        fun `should change password successfully`() {
+        fun `should change password and revoke all tokens`() {
             // Given
             val request = ChangePasswordRequest(
                 currentPassword = "currentPassword",
@@ -374,13 +493,15 @@ class AuthServiceTest {
             every { passwordEncoder.matches("currentPassword", "hashedPassword123") } returns true
             every { passwordEncoder.encode("newSecurePassword123!") } returns "newHashedPassword"
             every { userRepository.save(any()) } answers { firstArg() }
+            every { refreshTokenRepository.revokeAllByUserId(testUser.id, any()) } returns 2
 
             // When
             val response = authService.changePassword(testUser.id, request)
 
             // Then
-            response.message shouldBe "Password changed successfully"
+            response.message shouldBe "Password changed successfully. Please login again on all devices."
             verify { userRepository.save(match { it.passwordHash == "newHashedPassword" }) }
+            verify { refreshTokenRepository.revokeAllByUserId(testUser.id, any()) }
         }
 
         @Test

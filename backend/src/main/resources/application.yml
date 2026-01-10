@@ -28,7 +28,7 @@ server:
 # JWT Configuration
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-min-32-chars}
-  access-token-expiration: ${JWT_ACCESS_EXPIRATION:86400000}   # 24 hours in ms
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}      # 15 minutes in ms
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in ms
 
 # OpenAI Configuration

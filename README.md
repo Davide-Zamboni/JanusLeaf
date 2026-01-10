@@ -25,14 +25,14 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 │  (Kotlin)       │     │  Backend        │     │                 │
 │                 │     │                 │     │                 │
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                 │
-                                 ▼
-                        ┌─────────────────┐
-                        │                 │
-                        │   OpenAI API    │
-                        │   (GPT-4)       │
-                        │                 │
-                        └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │                 │
+                       │   OpenAI API    │
+                       │   (GPT-4)       │
+                       │                 │
+                       └─────────────────┘
 ```
 
 ---
@@ -53,25 +53,31 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 
 ```
 JanusLeaf/
-├── backend/                 # Spring Boot application
+├── backend/                    # Spring Boot application
 │   ├── src/
-│   │   ├── main/
-│   │   │   ├── kotlin/
-│   │   │   │   └── com/janusleaf/
-│   │   │   │       ├── controller/
-│   │   │   │       ├── service/
-│   │   │   │       ├── repository/
-│   │   │   │       ├── model/
-│   │   │   │       ├── dto/
-│   │   │   │       └── config/
-│   │   │   └── resources/
+│   │   ├── main/kotlin/com/janusleaf/
+│   │   │   ├── controller/
+│   │   │   ├── service/
+│   │   │   ├── repository/
+│   │   │   ├── model/
+│   │   │   ├── dto/
+│   │   │   ├── security/
+│   │   │   └── config/
+│   │   ├── integrationTest/
 │   │   └── test/
+│   ├── docs/                   # API documentation
+│   │   ├── README.md
+│   │   ├── AUTH.md
+│   │   └── HEALTH.md
+│   ├── scripts/                # Helper scripts
+│   │   ├── start-db.sh
+│   │   └── stop-db.sh
+│   ├── docker-compose.yml      # Full stack
+│   ├── docker-compose.dev.yml  # Dev database only
 │   ├── Dockerfile
 │   └── build.gradle.kts
-├── android/                 # Android application (coming soon)
-├── docker-compose.yml
+├── android/                    # Android application (coming soon)
 ├── docs/
-│   ├── API_DOCUMENTATION.md
 │   └── TODO.md
 └── README.md
 ```
@@ -83,20 +89,32 @@ JanusLeaf/
 ### Prerequisites
 
 - Docker & Docker Compose
+- JDK 21 (for local development)
 - OpenAI API Key
 
-### 1. Clone & Configure
+### Option 1: Full Stack with Docker
 
 ```bash
-cd JanusLeaf
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+cd JanusLeaf/backend
+
+# Set environment variables
+export OPENAI_API_KEY=your-key-here
+export JWT_SECRET=your-super-secret-jwt-key-at-least-32-chars
+
+# Start everything
+docker-compose up -d
 ```
 
-### 2. Start Services
+### Option 2: Local Development
 
 ```bash
-docker-compose up -d
+cd JanusLeaf/backend
+
+# Start only the database
+./scripts/start-db.sh
+
+# Run the app
+./gradlew bootRun
 ```
 
 ### 3. Test the API
@@ -110,28 +128,39 @@ curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "username": "John", "password": "SecurePass123!"}'
 
-# Login and get token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+# Login and get tokens
+curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "SecurePass123!"}' \
-  | jq -r '.accessToken')
-
-# Create a note (authenticated)
-curl -X POST http://localhost:8080/api/notes \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"content": "Had a wonderful day today!"}'
-
-# Get all notes (authenticated)
-curl http://localhost:8080/api/notes \
-  -H "Authorization: Bearer $TOKEN"
+  -d '{"email": "user@example.com", "password": "SecurePass123!"}'
 ```
+
+---
+
+## 🔐 Authentication
+
+JanusLeaf uses a **hybrid JWT authentication** system:
+
+| Token | Expiration | Storage | Purpose |
+|-------|------------|---------|---------|
+| **Access Token** | 15 minutes | Client only | API authentication |
+| **Refresh Token** | 7 days | Client + PostgreSQL | Get new access tokens |
+
+### Security Features
+
+- ✅ Short-lived access tokens (15 min exposure window)
+- ✅ Server-side refresh tokens (instant revocation)
+- ✅ Password change revokes all sessions
+- ✅ Logout from all devices endpoint
 
 ---
 
 ## 📖 API Documentation
 
-See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) for full API reference.
+See [backend/docs/](backend/docs/) for full API reference:
+
+- [Overview & Data Models](backend/docs/README.md)
+- [Authentication API](backend/docs/AUTH.md)
+- [Health Check API](backend/docs/HEALTH.md)
 
 ### Quick Reference
 
@@ -139,8 +168,17 @@ See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) for full API referenc
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/auth/register` | Create account |
-| `POST` | `/api/auth/login` | Login, get JWT |
-| `POST` | `/api/auth/refresh` | Refresh token |
+| `POST` | `/api/auth/login` | Login, get tokens |
+| `POST` | `/api/auth/refresh` | Refresh access token |
+| `POST` | `/api/auth/logout` | Revoke refresh token |
+
+**Authentication (Requires JWT)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/auth/me` | Get current user |
+| `PUT` | `/api/auth/me` | Update profile |
+| `POST` | `/api/auth/change-password` | Change password |
+| `POST` | `/api/auth/logout-all` | Logout all devices |
 
 **Notes (Requires JWT)**
 | Method | Endpoint | Description |
@@ -181,7 +219,7 @@ See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) for full API referenc
 ### Welcome / Login
 - Clean login form
 - "Don't have an account? Register" link
-- Secure token storage
+- Secure token storage (Keystore)
 
 ### Register
 - Email, username, password fields
@@ -208,21 +246,39 @@ See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md) for full API referenc
 ### Profile
 - View/edit username
 - Change password
-- Logout
+- Logout / Logout from all devices
 
 ---
 
 ## 🔮 Roadmap
 
 - [x] Backend API design
-- [x] User authentication design (JWT)
-- [ ] Spring Boot implementation
-- [ ] Docker setup
+- [x] User authentication (JWT with refresh tokens)
+- [x] Spring Boot implementation
+- [x] Docker setup
+- [x] GitHub Actions CI
 - [ ] Android app
 - [ ] Mood charts/graphs
 - [ ] Daily reminders
 - [ ] Export functionality
 - [ ] iOS app (Kotlin Multiplatform)
+
+---
+
+## 🧪 Running Tests
+
+```bash
+cd backend
+
+# Unit tests
+./gradlew test
+
+# Integration tests
+./gradlew integrationTest
+
+# All tests
+./gradlew check
+```
 
 ---
 

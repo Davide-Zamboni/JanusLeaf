@@ -5,17 +5,22 @@ import com.janusleaf.exception.InvalidCredentialsException
 import com.janusleaf.exception.InvalidTokenException
 import com.janusleaf.exception.UserAlreadyExistsException
 import com.janusleaf.exception.UserNotFoundException
+import com.janusleaf.model.RefreshToken
 import com.janusleaf.model.User
+import com.janusleaf.repository.RefreshTokenRepository
 import com.janusleaf.repository.UserRepository
 import com.janusleaf.security.JwtTokenProvider
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.security.MessageDigest
+import java.time.Instant
 import java.util.*
 
 @Service
 class AuthService(
     private val userRepository: UserRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtTokenProvider: JwtTokenProvider
 ) {
@@ -40,6 +45,7 @@ class AuthService(
         return createAuthResponse(savedUser)
     }
 
+    @Transactional
     fun login(request: LoginRequest): AuthResponse {
         val user = userRepository.findByEmail(request.email.lowercase())
             ?: throw InvalidCredentialsException()
@@ -51,9 +57,11 @@ class AuthService(
         return createAuthResponse(user)
     }
 
+    @Transactional
     fun refreshToken(request: RefreshTokenRequest): TokenRefreshResponse {
         val token = request.refreshToken
 
+        // Validate JWT structure and signature
         if (!jwtTokenProvider.validateToken(token)) {
             throw InvalidTokenException("Invalid or expired refresh token")
         }
@@ -61,6 +69,15 @@ class AuthService(
         val tokenType = jwtTokenProvider.getTokenType(token)
         if (tokenType != JwtTokenProvider.TokenType.REFRESH) {
             throw InvalidTokenException("Invalid token type. Expected refresh token")
+        }
+
+        // Check if token exists in database and is valid
+        val tokenHash = hashToken(token)
+        val storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
+            ?: throw InvalidTokenException("Refresh token not found or already revoked")
+
+        if (!storedToken.isValid()) {
+            throw InvalidTokenException("Refresh token has been revoked or expired")
         }
 
         val userId = jwtTokenProvider.getUserIdFromToken(token)
@@ -77,6 +94,25 @@ class AuthService(
             accessToken = newAccessToken,
             expiresIn = jwtTokenProvider.getAccessTokenExpirationMs() / 1000
         )
+    }
+
+    @Transactional
+    fun logout(request: LogoutRequest) {
+        val token = request.refreshToken
+
+        // Validate and revoke the refresh token
+        if (jwtTokenProvider.validateToken(token)) {
+            val tokenHash = hashToken(token)
+            val storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
+            storedToken?.revoke()
+        }
+        // If token is invalid or not found, just ignore - user is effectively logged out
+    }
+
+    @Transactional
+    fun logoutAll(userId: UUID): Int {
+        // Revoke all refresh tokens for the user
+        return refreshTokenRepository.revokeAllByUserId(userId)
     }
 
     fun getCurrentUser(userId: UUID): UserResponse {
@@ -111,19 +147,38 @@ class AuthService(
         user.passwordHash = passwordEncoder.encode(request.newPassword)
         userRepository.save(user)
 
-        return MessageResponse("Password changed successfully")
+        // Revoke all existing refresh tokens for security
+        refreshTokenRepository.revokeAllByUserId(userId)
+
+        return MessageResponse("Password changed successfully. Please login again on all devices.")
     }
 
-    private fun createAuthResponse(user: User): AuthResponse {
+    @Transactional
+    fun createAuthResponse(user: User): AuthResponse {
         val accessToken = jwtTokenProvider.generateAccessToken(user.id, user.email)
-        val refreshToken = jwtTokenProvider.generateRefreshToken(user.id, user.email)
+        val refreshTokenJwt = jwtTokenProvider.generateRefreshToken(user.id, user.email)
+
+        // Store refresh token in database
+        val expiresAt = jwtTokenProvider.getExpirationFromToken(refreshTokenJwt).toInstant()
+        val refreshToken = RefreshToken(
+            tokenHash = hashToken(refreshTokenJwt),
+            user = user,
+            expiresAt = expiresAt
+        )
+        refreshTokenRepository.save(refreshToken)
 
         return AuthResponse(
             accessToken = accessToken,
-            refreshToken = refreshToken,
+            refreshToken = refreshTokenJwt,
             expiresIn = jwtTokenProvider.getAccessTokenExpirationMs() / 1000,
             user = user.toResponse()
         )
+    }
+
+    private fun hashToken(token: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(token.toByteArray())
+        return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun User.toResponse() = UserResponse(

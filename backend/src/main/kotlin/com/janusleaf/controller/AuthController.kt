@@ -82,15 +82,22 @@ class AuthController(
     }
 
     /**
-     * Logout the current user.
+     * Logout the current user by revoking the refresh token.
      * POST /api/auth/logout
-     * Note: Since we use stateless JWT, this is mainly for client-side token cleanup.
-     * In a production app, you might want to implement token blacklisting.
      */
     @PostMapping("/logout")
-    fun logout(@CurrentUser user: UserPrincipal): ResponseEntity<MessageResponse> {
-        // With stateless JWT, logout is handled client-side by discarding the token
-        // In production, you could implement token blacklisting here
+    fun logout(@Valid @RequestBody request: LogoutRequest): ResponseEntity<MessageResponse> {
+        authService.logout(request)
         return ResponseEntity.ok(MessageResponse("Logged out successfully"))
+    }
+
+    /**
+     * Logout from all devices by revoking all refresh tokens.
+     * POST /api/auth/logout-all
+     */
+    @PostMapping("/logout-all")
+    fun logoutAll(@CurrentUser user: UserPrincipal): ResponseEntity<MessageResponse> {
+        val revokedCount = authService.logoutAll(user.id)
+        return ResponseEntity.ok(MessageResponse("Logged out from $revokedCount device(s)"))
     }
 }
