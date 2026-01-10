@@ -24,7 +24,7 @@ local.properties
 **/*.xccheckout
 **/*.moved-aside
 **/*.xcscmblueprint
-**/*.xcworkspacedata
+*.xcworkspacedata
 
 # iOS build artifacts
 **/DerivedData/
@@ -33,10 +33,28 @@ local.properties
 *.dSYM
 *.xcarchive
 
+# Xcode project files (keep project.pbxproj, ignore user-specific)
+*.pbxuser
+*.perspectivev3
+!default.pbxuser
+!default.perspectivev3
+
+# Xcode workspace settings (user-specific)
+xcshareddata/IDEWorkspaceChecks.plist
+*.hmap
+*.ipa
+*.xcuserstate
+project.xcworkspace/xcshareddata/swiftpm/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
 # Swift Package Manager
 .build/
 Package.resolved
 **/.swiftpm/
+.swiftpm/xcode/
 
 # CocoaPods (if used)
 **/Pods/
