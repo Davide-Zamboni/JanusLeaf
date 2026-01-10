@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     id("org.springframework.boot") version "3.2.2"
@@ -151,4 +152,24 @@ allOpen {
     annotation("jakarta.persistence.Entity")
     annotation("jakarta.persistence.MappedSuperclass")
     annotation("jakarta.persistence.Embeddable")
+}
+
+// ============================================
+// Load Secrets for bootRun
+// ============================================
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    doFirst {
+        val secretsFile = file("secrets.properties")
+        if (secretsFile.exists()) {
+            val props = Properties()
+            secretsFile.inputStream().use { stream -> props.load(stream) }
+            for (key in props.stringPropertyNames()) {
+                environment(key, props.getProperty(key))
+            }
+            println("✅ Loaded secrets from secrets.properties")
+        } else {
+            println("⚠️  secrets.properties not found - some features may be disabled")
+            println("   Copy secrets.properties.example to secrets.properties and fill in your values")
+        }
+    }
 }
