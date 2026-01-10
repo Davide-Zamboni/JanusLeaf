@@ -1,6 +1,10 @@
 # Unit test configuration
 # No database needed - unit tests use mocks
 
+spring:
+  flyway:
+    enabled: false
+
 jwt:
   secret: unit-test-secret-key-that-is-at-least-256-bits-long-for-testing-only
   access-token-expiration: 3600000

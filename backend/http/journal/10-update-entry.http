@@ -1,0 +1,106 @@
+### ============================================
+### Update Journal Entry
+### ============================================
+
+### Update journal entry body (Google Docs-like)
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}/body
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "body": "Updated content! I added more thoughts to my journal entry."
+}
+
+> {%
+    client.test("Journal body updated successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.version != null, "No version returned");
+    });
+    
+    if (response.body.version != null) {
+        client.global.set("journalVersion", response.body.version);
+        client.log("✅ New version: " + response.body.version);
+    }
+%}
+
+###
+
+### Update with optimistic locking (version check)
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}/body
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "body": "Even more updates with version control!",
+  "expectedVersion": {{journalVersion}}
+}
+
+> {%
+    client.test("Versioned update successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    
+    if (response.body.version != null) {
+        client.global.set("journalVersion", response.body.version);
+        client.log("✅ Updated to version: " + response.body.version);
+    }
+%}
+
+###
+
+### Update with wrong version (should fail - concurrent edit detection)
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}/body
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "body": "This should fail due to version mismatch",
+  "expectedVersion": 0
+}
+
+###
+
+### Update journal entry metadata (title)
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "My Wonderful Day - Updated"
+}
+
+> {%
+    client.test("Metadata updated successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.title === "My Wonderful Day - Updated", "Title not updated");
+    });
+%}
+
+###
+
+### Update mood score
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "moodScore": 8
+}
+
+> {%
+    client.test("Mood score updated", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.moodScore === 8, "Mood score not updated");
+    });
+%}
+
+###
+
+### Try invalid mood score (should fail with 400)
+PATCH http://localhost:8080/api/journal/{{journalEntryId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "moodScore": 15
+}

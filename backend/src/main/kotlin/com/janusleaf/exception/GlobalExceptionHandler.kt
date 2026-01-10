@@ -2,6 +2,7 @@ package com.janusleaf.exception
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -118,6 +119,19 @@ class GlobalExceptionHandler {
             error = "AI_SERVICE_ERROR",
             message = ex.message ?: "AI service unavailable",
             status = HttpStatus.SERVICE_UNAVAILABLE,
+            request = request
+        )
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException::class)
+    fun handleOptimisticLockingFailure(
+        ex: ObjectOptimisticLockingFailureException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        return buildErrorResponse(
+            error = "CONCURRENT_MODIFICATION",
+            message = ex.message ?: "The resource was modified by another request. Please refresh and try again.",
+            status = HttpStatus.CONFLICT,
             request = request
         )
     }
