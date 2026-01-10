@@ -1,0 +1,205 @@
+# 🍃 JanusLeaf App
+
+> Kotlin Multiplatform mobile application for JanusLeaf mood-tracking journal
+
+A beautiful, modern journaling app built with Compose Multiplatform, targeting both Android and iOS from a single codebase.
+
+---
+
+## 🏗️ Architecture
+
+The app follows **Clean Architecture** principles with **MVI (Model-View-Intent)** pattern for the presentation layer.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                        │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐       │
+│  │   Screens   │   │  ViewModels │   │   States    │       │
+│  │  (Compose)  │◄──│    (MVI)    │◄──│  & Events   │       │
+│  └─────────────┘   └─────────────┘   └─────────────┘       │
+├─────────────────────────────────────────────────────────────┤
+│                      DOMAIN LAYER                            │
+│  ┌─────────────┐   ┌─────────────┐                          │
+│  │   Models    │   │ Repository  │                          │
+│  │             │   │ Interfaces  │                          │
+│  └─────────────┘   └─────────────┘                          │
+├─────────────────────────────────────────────────────────────┤
+│                       DATA LAYER                             │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐       │
+│  │  Remote API │   │ Repository  │   │   Secure    │       │
+│  │   (Ktor)    │   │    Impl     │   │   Storage   │       │
+│  └─────────────┘   └─────────────┘   └─────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **Compose Multiplatform** | Shared UI across platforms |
+| **Ktor Client** | HTTP networking |
+| **Kotlinx Serialization** | JSON parsing |
+| **Koin** | Dependency injection |
+| **Kotlinx Coroutines** | Async operations |
+| **Kotlinx DateTime** | Date/time handling |
+| **Napier** | Multiplatform logging |
+
+---
+
+## 📁 Project Structure
+
+```
+app/
+├── composeApp/
+│   └── src/
+│       ├── commonMain/          # Shared code
+│       │   └── kotlin/com/janusleaf/app/
+│       │       ├── domain/      # Domain models & interfaces
+│       │       │   ├── model/
+│       │       │   └── repository/
+│       │       ├── data/        # Data layer implementation
+│       │       │   ├── local/
+│       │       │   ├── remote/
+│       │       │   └── repository/
+│       │       ├── presentation/# UI layer
+│       │       │   ├── auth/
+│       │       │   ├── home/
+│       │       │   ├── components/
+│       │       │   └── theme/
+│       │       └── di/          # Dependency injection
+│       ├── androidMain/         # Android-specific code
+│       └── iosMain/             # iOS-specific code
+├── iosApp/                      # iOS Xcode project
+└── gradle/
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **JDK 17+**
+- **Android Studio Hedgehog or later** (with KMP plugin)
+- **Xcode 15+** (for iOS)
+
+### Running the Backend
+
+The app requires the JanusLeaf backend to be running:
+
+```bash
+cd ../backend
+./scripts/start-db.sh
+./gradlew bootRun
+```
+
+### Running on Android
+
+```bash
+# From the app directory
+./gradlew :composeApp:installDebug
+
+# Or open in Android Studio and run
+```
+
+### Running on iOS
+
+1. Build the iOS framework:
+```bash
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+```
+
+2. Open `iosApp/iosApp.xcodeproj` in Xcode
+
+3. Run on simulator or device
+
+---
+
+## 🎨 Design System
+
+The app features a custom design system inspired by **2026 design trends**:
+
+### Color Palette
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Leaf Green | `#1A2F23` | Primary brand color |
+| Sage Green | `#6B8F71` | Accent & highlights |
+| Sunrise Gold | `#FFB74D` | Positive mood indicator |
+| Dusk Purple | `#9575CD` | Secondary accent |
+
+### Typography
+
+- **Display**: Light weight for hero text
+- **Headlines**: SemiBold for page titles
+- **Body**: Regular weight for content
+
+### Components
+
+- **JanusTextField**: Custom text field with animated focus states
+- **JanusPrimaryButton**: Gradient button with press animation
+- **AnimatedBackground**: Flowing organic shapes
+
+---
+
+## 🔐 Security
+
+### Token Storage
+
+- **Android**: EncryptedSharedPreferences with Android Keystore
+- **iOS**: Keychain with hardware encryption
+
+### Authentication Flow
+
+```
+1. Login/Register → Store tokens securely
+2. API Calls → Auto-inject access token
+3. Token Expired → Auto-refresh with refresh token
+4. Refresh Failed → Redirect to login
+```
+
+---
+
+## 📱 Screens
+
+### Authentication (Implemented ✅)
+- Login with email/password
+- Register with email/username/password
+- Form validation with animated errors
+- Secure token management
+
+### Home (Placeholder)
+- Welcome screen after login
+- Logout functionality
+
+### Coming Soon
+- Journal entry list
+- Create/edit notes
+- AI mood analysis
+- Statistics & trends
+- Profile management
+
+---
+
+## 🔧 Configuration
+
+### API Base URL
+
+For development, update the base URL in `ApiConfig.kt`:
+
+```kotlin
+object ApiConfig {
+    // Android Emulator → 10.0.2.2
+    // iOS Simulator → localhost
+    // Physical device → Your machine's IP
+    const val BASE_URL = "http://10.0.2.2:8080"
+}
+```
+
+---
+
+## 📄 License
+
+MIT License - Part of the JanusLeaf project
