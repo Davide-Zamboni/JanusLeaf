@@ -14,6 +14,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
 
+  # Disable Flyway for tests - use Hibernate's ddl-auto instead
+  flyway:
+    enabled: false
+
 jwt:
   secret: integration-test-secret-key-that-is-at-least-256-bits-long-for-testing
   access-token-expiration: 3600000
