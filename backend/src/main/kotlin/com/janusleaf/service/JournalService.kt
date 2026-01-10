@@ -18,7 +18,8 @@ import java.util.*
 @Service
 class JournalService(
     private val journalEntryRepository: JournalEntryRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val moodAnalysisService: MoodAnalysisService
 ) {
 
     companion object {
@@ -45,6 +46,12 @@ class JournalService(
         )
 
         val savedEntry = journalEntryRepository.save(entry)
+        
+        // Queue async mood analysis if body has content
+        if (savedEntry.body.isNotBlank()) {
+            moodAnalysisService.queueMoodAnalysis(savedEntry.id, savedEntry.body)
+        }
+        
         return savedEntry.toResponse()
     }
 
@@ -116,6 +123,9 @@ class JournalService(
 
         entry.body = request.body
         val savedEntry = journalEntryRepository.saveAndFlush(entry)
+        
+        // Queue async mood analysis (debounced via database - multiple rapid edits won't spam the API)
+        moodAnalysisService.queueMoodAnalysis(savedEntry.id, savedEntry.body)
 
         return JournalBodyUpdateResponse(
             id = savedEntry.id,
@@ -126,7 +136,8 @@ class JournalService(
     }
 
     /**
-     * Update journal entry metadata (title, mood score).
+     * Update journal entry metadata (title only).
+     * Note: mood_score is AI-generated and cannot be set by users.
      */
     @Transactional
     fun updateMetadata(
@@ -137,7 +148,6 @@ class JournalService(
         val entry = findEntryForUser(userId, entryId)
 
         request.title?.let { entry.title = it.trim() }
-        request.moodScore?.let { entry.moodScore = it }
 
         val savedEntry = journalEntryRepository.save(entry)
         return savedEntry.toResponse()
@@ -152,6 +162,10 @@ class JournalService(
         if (!journalEntryRepository.existsByUserIdAndId(userId, entryId)) {
             throw NoteNotFoundException("Journal entry not found")
         }
+        
+        // Cancel any pending mood analysis for this entry
+        moodAnalysisService.cancelPendingAnalysis(entryId)
+        
         journalEntryRepository.deleteByUserIdAndId(userId, entryId)
     }
 

@@ -1,15 +1,13 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="JanusLeaf Application" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
-    <module name="janusleaf-backend.main" />
-    <option name="SPRING_BOOT_MAIN_CLASS" value="com.janusleaf.JanusLeafApplicationKt" />
-    <option name="ACTIVE_PROFILES" value="" />
     <envs>
       <env name="DATABASE_URL" value="jdbc:postgresql://localhost:5432/janusleaf" />
       <env name="DATABASE_USERNAME" value="janusleaf" />
       <env name="DATABASE_PASSWORD" value="janusleaf" />
       <env name="JWT_SECRET" value="dev-secret-key-that-is-at-least-256-bits-long-for-local-development" />
     </envs>
-    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UPDATE_CLASSES_AND_RESOURCES" />
+    <module name="janusleaf-backend.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.janusleaf.JanusLeafApplicationKt" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="com.janusleaf.*" />

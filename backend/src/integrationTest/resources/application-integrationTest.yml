@@ -23,6 +23,16 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 86400000
 
+# Disable OpenRouter during integration tests
+openrouter:
+  api-key: ""
+  debounce-delay-ms: 100
+
+# Disable scheduled jobs in integration tests
+jobs:
+  mood-analysis:
+    cron: "0 0 0 1 1 *"  # Run once a year (effectively disabled)
+
 logging:
   level:
     com.janusleaf: INFO

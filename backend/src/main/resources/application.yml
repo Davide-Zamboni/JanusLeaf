@@ -37,10 +37,20 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}      # 15 minutes in ms
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in ms
 
-# OpenAI Configuration
-openai:
-  api-key: ${OPENAI_API_KEY:}
-  model: ${OPENAI_MODEL:gpt-4}
+# OpenRouter Configuration (for AI mood analysis)
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+  model: ${OPENROUTER_MODEL:google/gemma-3-27b-it:free}
+  # Debounce delay in milliseconds - wait this long after last edit before analyzing
+  debounce-delay-ms: ${MOOD_DEBOUNCE_DELAY:5000}
+
+# Scheduled Jobs Configuration
+jobs:
+  mood-analysis:
+    # Cron expression for mood analysis queue polling
+    # Format: second minute hour day-of-month month day-of-week
+    cron: ${MOOD_ANALYSIS_CRON:*/3 * * * * *}
 
 # Logging
 logging:

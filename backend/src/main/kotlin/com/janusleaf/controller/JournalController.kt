@@ -88,7 +88,8 @@ class JournalController(
     }
 
     /**
-     * Update journal entry metadata (title, mood score).
+     * Update journal entry metadata (title only).
+     * Note: mood_score is AI-generated and cannot be set by users.
      * PATCH /api/journal/{id}
      */
     @PatchMapping("/{id}")

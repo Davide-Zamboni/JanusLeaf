@@ -1,0 +1,10 @@
+# Git-crypt encrypted files
+# These files will be encrypted in the repository but decrypted locally
+
+# Secrets files
+**/secrets.properties filter=git-crypt diff=git-crypt
+**/secrets.kt filter=git-crypt diff=git-crypt
+secrets/** filter=git-crypt diff=git-crypt
+
+# API keys and credentials
+*.secret filter=git-crypt diff=git-crypt
