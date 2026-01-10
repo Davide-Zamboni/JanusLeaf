@@ -232,7 +232,7 @@ class JournalServiceTest {
             )
             val page = PageImpl(entries, PageRequest.of(0, 10), 2)
 
-            every { journalEntryRepository.findByUserIdOrderByEntryDateDesc(testUserId, any()) } returns page
+            every { journalEntryRepository.findByUserId(testUserId, any()) } returns page
 
             // When
             val response = journalService.getEntries(testUserId, 0, 10)
@@ -254,7 +254,7 @@ class JournalServiceTest {
             val entry = createTestEntry(body = longBody)
             val page = PageImpl(listOf(entry), PageRequest.of(0, 10), 1)
 
-            every { journalEntryRepository.findByUserIdOrderByEntryDateDesc(testUserId, any()) } returns page
+            every { journalEntryRepository.findByUserId(testUserId, any()) } returns page
 
             // When
             val response = journalService.getEntries(testUserId, 0, 10)
@@ -280,7 +280,7 @@ class JournalServiceTest {
             )
 
             every { 
-                journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDesc(
+                journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDescUpdatedAtDesc(
                     testUserId, startDate, endDate
                 ) 
             } returns entries
