@@ -15,6 +15,26 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
 }
 
+// ============================================
+// Integration Test Source Set
+// ============================================
+sourceSets {
+    create("integrationTest") {
+        kotlin.srcDir("src/integrationTest/kotlin")
+        resources.srcDir("src/integrationTest/resources")
+        compileClasspath += sourceSets["main"].output + sourceSets["test"].output
+        runtimeClasspath += sourceSets["main"].output + sourceSets["test"].output
+    }
+}
+
+val integrationTestImplementation: Configuration by configurations.getting {
+    extendsFrom(configurations["testImplementation"])
+}
+
+val integrationTestRuntimeOnly: Configuration by configurations.getting {
+    extendsFrom(configurations["testRuntimeOnly"])
+}
+
 repositories {
     mavenCentral()
 }
@@ -82,6 +102,39 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    
+    // Test logging
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+}
+
+// ============================================
+// Integration Test Task
+// ============================================
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests."
+    group = "verification"
+    
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    
+    useJUnitPlatform()
+    
+    // Run after unit tests
+    shouldRunAfter(tasks.test)
+    
+    // Test logging
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+}
+
+// Make 'check' task run both unit and integration tests
+tasks.check {
+    dependsOn(tasks.named("integrationTest"))
 }
 
 // Make JPA work with Kotlin data classes

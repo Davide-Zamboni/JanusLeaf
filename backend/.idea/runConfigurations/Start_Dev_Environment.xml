@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Start Dev Environment" type="CompoundRunConfigurationType">
-    <toRun name="Docker: Start Database" type="docker-deploy" />
+    <toRun name="Start Database (Terminal)" type="ShConfigurationType" />
     <toRun name="JanusLeaf Application" type="SpringBootApplicationConfigurationType" />
     <method v="2" />
   </configuration>
