@@ -28,6 +28,7 @@ class JournalServiceTest {
 
     private lateinit var journalEntryRepository: JournalEntryRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var moodAnalysisService: MoodAnalysisService
     private lateinit var journalService: JournalService
 
     private val testUserId = UUID.randomUUID()
@@ -63,7 +64,8 @@ class JournalServiceTest {
     fun setUp() {
         journalEntryRepository = mockk()
         userRepository = mockk()
-        journalService = JournalService(journalEntryRepository, userRepository)
+        moodAnalysisService = mockk(relaxed = true) // Relaxed mock - we don't care about mood analysis in most tests
+        journalService = JournalService(journalEntryRepository, userRepository, moodAnalysisService)
     }
 
     @Nested
@@ -382,23 +384,6 @@ class JournalServiceTest {
 
             // Then
             response.title shouldBe "New Title"
-        }
-
-        @Test
-        fun `should update mood score successfully`() {
-            // Given
-            val entryId = UUID.randomUUID()
-            val entry = createTestEntry(id = entryId)
-            val request = UpdateJournalMetadataRequest(moodScore = 8)
-
-            every { journalEntryRepository.findByUserIdAndId(testUserId, entryId) } returns entry
-            every { journalEntryRepository.save(any()) } answers { firstArg() }
-
-            // When
-            val response = journalService.updateMetadata(testUserId, entryId, request)
-
-            // Then
-            response.moodScore shouldBe 8
         }
 
         @Test

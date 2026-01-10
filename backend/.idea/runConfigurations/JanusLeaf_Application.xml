@@ -2,14 +2,24 @@
   <configuration default="false" name="JanusLeaf Application" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <module name="janusleaf-backend.main" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.janusleaf.JanusLeafApplicationKt" />
-    <option name="ACTIVE_PROFILES" value="" />
+    <option name="WORKING_DIRECTORY" value="$MODULE_WORKING_DIR$" />
     <envs>
       <env name="DATABASE_URL" value="jdbc:postgresql://localhost:5432/janusleaf" />
       <env name="DATABASE_USERNAME" value="janusleaf" />
       <env name="DATABASE_PASSWORD" value="janusleaf" />
-      <env name="JWT_SECRET" value="dev-secret-key-that-is-at-least-256-bits-long-for-local-development" />
     </envs>
-    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UPDATE_CLASSES_AND_RESOURCES" />
+    <!-- EnvFile plugin: reads secrets.properties -->
+    <EXTENSION ID="net.ashald.envfile">
+      <option name="IS_ENABLED" value="true" />
+      <option name="IS_SUBST" value="false" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+      <option name="IS_IGNORE_MISSING_FILES" value="true" />
+      <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+      <ENTRIES>
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        <ENTRY IS_ENABLED="true" PARSER="properties" PATH="secrets.properties" />
+      </ENTRIES>
+    </EXTENSION>
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="com.janusleaf.*" />

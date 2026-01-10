@@ -1,7 +1,5 @@
 package com.janusleaf.dto
 
-import jakarta.validation.constraints.Max
-import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.time.LocalDate
@@ -39,15 +37,12 @@ data class UpdateJournalBodyRequest(
 )
 
 /**
- * Request to update journal entry metadata (title, mood score).
+ * Request to update journal entry metadata (title only).
+ * Note: mood_score is AI-generated and cannot be set by users.
  */
 data class UpdateJournalMetadataRequest(
     @field:Size(max = 255, message = "Title must not exceed 255 characters")
-    val title: String? = null,
-
-    @field:Min(1, message = "Mood score must be between 1 and 10")
-    @field:Max(10, message = "Mood score must be between 1 and 10")
-    val moodScore: Int? = null
+    val title: String? = null
 )
 
 // ==================== Response DTOs ====================

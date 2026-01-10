@@ -10,6 +10,7 @@ struct JournalListView: View {
     @State private var selectedEntryId: String? = nil
     @State private var showLogoutConfirmation = false
     @State private var animateItems = false
+    @State private var moodPollingTimer: Timer? = nil
     
     var body: some View {
         NavigationStack {
@@ -62,7 +63,30 @@ struct JournalListView: View {
             withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
                 animateItems = true
             }
+            startMoodPolling()
         }
+        .onDisappear {
+            stopMoodPolling()
+        }
+    }
+    
+    // MARK: - Mood Polling
+    
+    /// Start polling for mood score updates (for entries with AI-generated scores pending)
+    private func startMoodPolling() {
+        // Poll every 5 seconds to check for mood score updates
+        moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+            // Only refresh if there are entries with nil mood scores
+            let hasPendingMoods = journalManager.entries.contains { $0.moodScore == nil }
+            if hasPendingMoods {
+                journalManager.refresh()
+            }
+        }
+    }
+    
+    private func stopMoodPolling() {
+        moodPollingTimer?.invalidate()
+        moodPollingTimer = nil
     }
     
     // MARK: - Header View
@@ -329,10 +353,8 @@ struct JournalEntryCard: View {
                     
                     Spacer()
                     
-                    // Mood indicator
-                    if let moodScore = entry.moodScore?.intValue {
-                        MoodBadge(score: Int(moodScore))
-                    }
+                    // Mood indicator - shows AI loading animation when nil
+                    MoodBadge(score: entry.moodScore.map { Int($0.intValue) })
                 }
                 
                 // Body preview
@@ -408,23 +430,10 @@ struct JournalEntryCard: View {
 // MARK: - Mood Badge
 
 struct MoodBadge: View {
-    let score: Int
+    let score: Int?
     
     var body: some View {
-        HStack(spacing: 4) {
-            Text(JournalManager.moodEmoji(for: score))
-                .font(.system(size: 14))
-            
-            Text("\(score)")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(JournalManager.moodColor(for: score).opacity(0.3))
-        )
+        AnimatedMoodBadge(score: score)
     }
 }
 
