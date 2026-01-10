@@ -24,6 +24,7 @@ JanusLeaf is a mood-tracking journal application that uses AI to analyze daily n
 | Document | Description |
 |----------|-------------|
 | [Authentication](AUTH.md) | User registration, login, tokens, logout |
+| [Journal](JOURNAL.md) | Create, read, update, delete journal entries |
 | [Health Check](HEALTH.md) | API health status endpoint |
 
 ---
@@ -52,37 +53,33 @@ JanusLeaf is a mood-tracking journal application that uses AI to analyze daily n
 }
 ```
 
-### Note
+### JournalEntry
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | `UUID` | Unique identifier |
 | `userId` | `UUID` | Owner user ID (from JWT, not exposed in API) |
-| `content` | `String` | The note text (max 5000 chars) |
+| `title` | `String` | Entry title (defaults to date if not provided) |
+| `body` | `String` | The journal content (max 50,000 chars) |
 | `moodScore` | `Integer` | AI-generated score 1-10 (null if pending) |
-| `moodSummary` | `String` | AI-generated brief summary |
-| `highlights` | `List<String>` | Key positive/negative points extracted |
-| `createdAt` | `DateTime` | When the note was created |
+| `entryDate` | `LocalDate` | Date the entry is for |
+| `version` | `Long` | Optimistic locking version for concurrent edits |
+| `createdAt` | `DateTime` | When the entry was created |
 | `updatedAt` | `DateTime` | Last modification timestamp |
-| `analyzedAt` | `DateTime` | When AI analysis completed (null if pending) |
 
-> **Note:** Users can only access their own notes. The `userId` is automatically set from the JWT token.
+> **Note:** Users can only access their own entries. The `userId` is automatically set from the JWT token.
 
-#### Example Note Response
+#### Example JournalEntry Response
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "content": "Had a great morning walk in the park...",
+  "title": "A Great Day",
+  "body": "Had a great morning walk in the park...",
   "moodScore": 7,
-  "moodSummary": "A balanced day with both challenges and positive moments",
-  "highlights": [
-    "Morning walk in nature",
-    "Project completion achievement",
-    "Quality family time"
-  ],
+  "entryDate": "2026-01-10",
+  "version": 2,
   "createdAt": "2026-01-10T09:30:00Z",
-  "updatedAt": "2026-01-10T09:30:00Z",
-  "analyzedAt": "2026-01-10T09:30:05Z"
+  "updatedAt": "2026-01-10T10:30:00Z"
 }
 ```
 
@@ -109,8 +106,10 @@ All errors follow this format:
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password |
 | `INVALID_TOKEN` | 401 | Invalid, expired, or revoked token |
 | `USER_ALREADY_EXISTS` | 409 | Email already registered |
+| `CONCURRENT_MODIFICATION` | 409 | Resource was modified by another request (optimistic locking) |
 | `USER_NOT_FOUND` | 404 | User does not exist |
-| `NOT_FOUND` | 404 | Resource not found |
+| `NOTE_NOT_FOUND` | 404 | Journal entry not found |
+| `ACCESS_DENIED` | 403 | No access to the requested resource |
 | `VALIDATION_ERROR` | 400 | Invalid request data |
 | `AI_SERVICE_ERROR` | 503 | AI analysis temporarily unavailable |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |

@@ -1,0 +1,26 @@
+### ============================================
+### Delete Journal Entry
+### ============================================
+
+### Delete a journal entry
+DELETE http://localhost:8080/api/journal/{{journalEntryId2}}
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Journal entry deleted successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.message != null, "No message received");
+    });
+    client.log("✅ Entry deleted");
+%}
+
+###
+
+### Try to delete non-existent entry (should return 404)
+DELETE http://localhost:8080/api/journal/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{accessToken}}
+
+###
+
+### Try to delete without authentication (should return 401)
+DELETE http://localhost:8080/api/journal/{{journalEntryId}}

@@ -1,0 +1,77 @@
+### ============================================
+### Create Journal Entry
+### ============================================
+
+### Create a journal entry with all fields
+POST http://localhost:8080/api/journal
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "A Great Day",
+  "body": "Today was wonderful! I accomplished so much.",
+  "entryDate": "2024-01-15"
+}
+
+> {%
+    client.test("Journal entry created successfully", function() {
+        client.assert(response.status === 201, "Response status is not 201");
+        client.assert(response.body.id != null, "No entry ID received");
+        client.assert(response.body.title === "A Great Day", "Title mismatch");
+    });
+    
+    if (response.body.id) {
+        client.global.set("journalEntryId", response.body.id);
+        client.log("✅ Journal entry created: " + response.body.id);
+    }
+%}
+
+###
+
+### Create a journal entry with default title (today's date)
+POST http://localhost:8080/api/journal
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "body": "Just writing some thoughts without a title..."
+}
+
+> {%
+    client.test("Journal entry created with default title", function() {
+        client.assert(response.status === 201, "Response status is not 201");
+        client.assert(response.body.title != null, "No title set");
+    });
+    
+    if (response.body.id) {
+        client.global.set("journalEntryId2", response.body.id);
+        client.log("✅ Entry created with default title: " + response.body.title);
+    }
+%}
+
+###
+
+### Create an empty journal entry (just to start writing)
+POST http://localhost:8080/api/journal
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{}
+
+> {%
+    client.test("Empty journal entry created", function() {
+        client.assert(response.status === 201, "Response status is not 201");
+        client.assert(response.body.body === "", "Body should be empty");
+    });
+%}
+
+###
+
+### Try to create entry without authentication (should fail with 401)
+POST http://localhost:8080/api/journal
+Content-Type: application/json
+
+{
+  "title": "Unauthorized Entry",
+  "body": "This should not work"
+}

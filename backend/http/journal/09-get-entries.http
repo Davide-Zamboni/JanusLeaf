@@ -1,0 +1,53 @@
+### ============================================
+### Get Journal Entries
+### ============================================
+
+### Get a specific journal entry by ID
+GET http://localhost:8080/api/journal/{{journalEntryId}}
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Journal entry retrieved successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.id != null, "No entry ID");
+        client.assert(response.body.version != null, "No version field");
+    });
+    
+    if (response.body.version != null) {
+        client.global.set("journalVersion", response.body.version);
+        client.log("✅ Entry version: " + response.body.version);
+    }
+%}
+
+###
+
+### Get paginated list of journal entries
+GET http://localhost:8080/api/journal?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Journal entries list retrieved", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.entries != null, "No entries array");
+        client.assert(response.body.totalElements != null, "No total count");
+    });
+    client.log("✅ Total entries: " + response.body.totalElements);
+%}
+
+###
+
+### Get entries by date range
+GET http://localhost:8080/api/journal/range?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Date range entries retrieved", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+%}
+
+###
+
+### Try to get non-existent entry (should return 404)
+GET http://localhost:8080/api/journal/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{accessToken}}
