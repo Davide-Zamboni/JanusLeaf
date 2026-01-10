@@ -10,6 +10,7 @@ object ApiConfig {
     
     // API endpoints
     object Endpoints {
+        // Auth endpoints
         const val REGISTER = "/api/auth/register"
         const val LOGIN = "/api/auth/login"
         const val REFRESH = "/api/auth/refresh"
@@ -17,6 +18,14 @@ object ApiConfig {
         const val LOGOUT_ALL = "/api/auth/logout-all"
         const val ME = "/api/auth/me"
         const val CHANGE_PASSWORD = "/api/auth/change-password"
+        
+        // Journal endpoints
+        const val JOURNAL = "/api/journal"
+        const val JOURNAL_RANGE = "/api/journal/range"
+        fun journalById(id: String) = "/api/journal/$id"
+        fun journalBody(id: String) = "/api/journal/$id/body"
+        
+        // Health
         const val HEALTH = "/api/health"
     }
     
