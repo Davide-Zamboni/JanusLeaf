@@ -1,0 +1,14 @@
+### ============================================
+### Health Check API
+### ============================================
+
+### Health Check - No authentication required
+GET http://localhost:8080/api/health
+Accept: application/json
+
+> {%
+    client.test("Health check returns UP", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.status === "UP", "Status is not UP");
+    });
+%}

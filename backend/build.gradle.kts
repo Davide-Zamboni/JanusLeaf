@@ -22,8 +22,8 @@ sourceSets {
     create("integrationTest") {
         kotlin.srcDir("src/integrationTest/kotlin")
         resources.srcDir("src/integrationTest/resources")
-        compileClasspath += sourceSets["main"].output + sourceSets["test"].output
-        runtimeClasspath += sourceSets["main"].output + sourceSets["test"].output
+        compileClasspath += sourceSets["main"].output
+        runtimeClasspath += sourceSets["main"].output
     }
 }
 
@@ -33,6 +33,11 @@ val integrationTestImplementation: Configuration by configurations.getting {
 
 val integrationTestRuntimeOnly: Configuration by configurations.getting {
     extendsFrom(configurations["testRuntimeOnly"])
+}
+
+// Handle duplicate resources
+tasks.named<Copy>("processIntegrationTestResources") {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 repositories {

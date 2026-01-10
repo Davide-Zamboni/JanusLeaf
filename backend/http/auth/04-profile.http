@@ -1,0 +1,40 @@
+### ============================================
+### User Profile (Authenticated)
+### ============================================
+### ⚠️ Run Login first to get the access token!
+
+### Get current user profile
+GET http://localhost:8080/api/auth/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Get profile successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.email != null, "No email in response");
+    });
+%}
+
+###
+
+### Update username
+PUT http://localhost:8080/api/auth/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "username": "UpdatedUsername"
+}
+
+> {%
+    client.test("Profile update successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.username === "UpdatedUsername", "Username not updated");
+    });
+%}
+
+###
+
+### Access without token (should fail with 403)
+GET http://localhost:8080/api/auth/me
+Accept: application/json

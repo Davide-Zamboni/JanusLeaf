@@ -1,0 +1,51 @@
+### ============================================
+### User Registration
+### ============================================
+
+### Register a new user
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "username": "TestUser",
+  "password": "SecurePass123!"
+}
+
+> {%
+    client.test("Registration successful", function() {
+        client.assert(response.status === 201, "Response status is not 201");
+        client.assert(response.body.accessToken != null, "No access token received");
+    });
+    
+    // Save tokens for use in other requests
+    if (response.body.accessToken) {
+        client.global.set("accessToken", response.body.accessToken);
+        client.global.set("refreshToken", response.body.refreshToken);
+        client.log("✅ Tokens saved!");
+    }
+%}
+
+###
+
+### Register with invalid email (should fail with 400)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "username": "User",
+  "password": "SecurePass123!"
+}
+
+###
+
+### Register with short password (should fail with 400)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "another@example.com",
+  "username": "User",
+  "password": "short"
+}
