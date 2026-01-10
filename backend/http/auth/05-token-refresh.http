@@ -1,0 +1,35 @@
+### ============================================
+### Token Refresh
+### ============================================
+### ⚠️ Run Login first to get the refresh token!
+
+### Refresh the access token
+POST http://localhost:8080/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+    client.test("Token refresh successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.accessToken != null, "No new access token");
+    });
+    
+    // Update the access token
+    if (response.body.accessToken) {
+        client.global.set("accessToken", response.body.accessToken);
+        client.log("✅ Access token refreshed!");
+    }
+%}
+
+###
+
+### Refresh with invalid token (should fail with 401)
+POST http://localhost:8080/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "invalid.token.here"
+}

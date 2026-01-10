@@ -1,0 +1,15 @@
+### ============================================
+### Logout (Authenticated)
+### ============================================
+### ⚠️ Run Login first to get the access token!
+
+### Logout
+POST http://localhost:8080/api/auth/logout
+Authorization: Bearer {{accessToken}}
+
+> {%
+    client.test("Logout successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+    client.log("✅ Logged out. Clear your tokens client-side.");
+%}

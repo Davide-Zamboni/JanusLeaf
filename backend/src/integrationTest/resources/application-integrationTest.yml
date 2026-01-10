@@ -1,0 +1,26 @@
+spring:
+  # Use H2 in-memory database for integration tests
+  datasource:
+    url: jdbc:h2:mem:janusleaf_integration;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+jwt:
+  secret: integration-test-secret-key-that-is-at-least-256-bits-long-for-testing
+  access-token-expiration: 3600000
+  refresh-token-expiration: 86400000
+
+logging:
+  level:
+    com.janusleaf: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

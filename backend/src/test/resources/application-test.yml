@@ -1,0 +1,11 @@
+# Unit test configuration
+# No database needed - unit tests use mocks
+
+jwt:
+  secret: unit-test-secret-key-that-is-at-least-256-bits-long-for-testing-only
+  access-token-expiration: 3600000
+  refresh-token-expiration: 86400000
+
+logging:
+  level:
+    com.janusleaf: DEBUG

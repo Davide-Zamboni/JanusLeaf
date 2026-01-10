@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: janusleaf
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/janusleaf}
+    username: ${DATABASE_USERNAME:janusleaf}
+    password: ${DATABASE_PASSWORD:janusleaf}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-min-32-chars}
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:86400000}   # 24 hours in ms
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in ms
+
+# OpenAI Configuration
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4}
+
+# Logging
+logging:
+  level:
+    com.janusleaf: DEBUG
+    org.springframework.security: DEBUG
