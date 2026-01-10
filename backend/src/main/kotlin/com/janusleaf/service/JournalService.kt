@@ -19,7 +19,8 @@ import java.util.*
 class JournalService(
     private val journalEntryRepository: JournalEntryRepository,
     private val userRepository: UserRepository,
-    private val moodAnalysisService: MoodAnalysisService
+    private val moodAnalysisService: MoodAnalysisService,
+    private val inspirationalQuoteService: InspirationalQuoteService
 ) {
 
     companion object {
@@ -51,6 +52,9 @@ class JournalService(
         if (savedEntry.body.isNotBlank()) {
             moodAnalysisService.queueMoodAnalysis(savedEntry.id, savedEntry.body)
         }
+        
+        // Mark inspirational quote for regeneration (new journal entry = fresh insights)
+        inspirationalQuoteService.markForRegeneration(userId)
         
         return savedEntry.toResponse()
     }

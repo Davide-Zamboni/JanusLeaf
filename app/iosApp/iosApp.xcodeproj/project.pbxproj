@@ -22,6 +22,8 @@
 		CCCC000100010001 /* AIMoodLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCC000100010002 /* AIMoodLoadingView.swift */; };
 		DDDD000100010001 /* MarkdownTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010002 /* MarkdownTextEditor.swift */; };
 		DDDD000100010003 /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010004 /* MarkdownRenderer.swift */; };
+		EEEE000100010001 /* InspirationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE000100010002 /* InspirationManager.swift */; };
+		EEEE000100010003 /* InspirationalQuoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE000100010004 /* InspirationalQuoteView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,8 @@
 		CCCC000100010002 /* AIMoodLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMoodLoadingView.swift; sourceTree = "<group>"; };
 		DDDD000100010002 /* MarkdownTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextEditor.swift; sourceTree = "<group>"; };
 		DDDD000100010004 /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
+		EEEE000100010002 /* InspirationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspirationManager.swift; sourceTree = "<group>"; };
+		EEEE000100010004 /* InspirationalQuoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspirationalQuoteView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +88,7 @@
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
 				AAAA000100010002 /* AuthManager.swift */,
 				BBBB000100010002 /* JournalManager.swift */,
+				EEEE000100010002 /* InspirationManager.swift */,
 				AAAA00010001000B /* Views */,
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
@@ -112,6 +117,7 @@
 				CCCC000100010002 /* AIMoodLoadingView.swift */,
 				DDDD000100010002 /* MarkdownTextEditor.swift */,
 				DDDD000100010004 /* MarkdownRenderer.swift */,
+				EEEE000100010004 /* InspirationalQuoteView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -201,6 +207,8 @@
 				CCCC000100010001 /* AIMoodLoadingView.swift in Sources */,
 				DDDD000100010001 /* MarkdownTextEditor.swift in Sources */,
 				DDDD000100010003 /* MarkdownRenderer.swift in Sources */,
+				EEEE000100010001 /* InspirationManager.swift in Sources */,
+				EEEE000100010003 /* InspirationalQuoteView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

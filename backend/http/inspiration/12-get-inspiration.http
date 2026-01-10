@@ -1,0 +1,22 @@
+### Get Inspirational Quote
+### Returns the AI-generated inspirational quote based on user's last 20 journal entries
+### Includes 4 thematic tags extracted from journal themes
+### Regenerates when: user creates new entry, once per day, or if no quote exists
+
+GET {{base_url}}/api/inspiration
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+### Expected Response (200 OK):
+# {
+#   "id": "uuid",
+#   "quote": "Your personalized inspirational quote here...",
+#   "tags": ["growth", "reflection", "gratitude", "mindfulness"],
+#   "generatedAt": "2024-01-15T10:30:00Z",
+#   "updatedAt": "2024-01-15T10:30:00Z"
+# }
+
+### Expected Response (404 Not Found - No quote yet):
+# {
+#   "message": "No inspirational quote generated yet. One will be created shortly based on your journal entries."
+# }
