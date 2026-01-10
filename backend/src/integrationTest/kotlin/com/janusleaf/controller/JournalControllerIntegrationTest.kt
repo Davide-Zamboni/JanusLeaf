@@ -62,7 +62,7 @@ class JournalControllerIntegrationTest {
         val result = mockMvc.perform(
             post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
+                .content(objectMapper.writeValueAsString(request))d
         ).andReturn()
         val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
         return response.accessToken
@@ -413,52 +413,7 @@ class JournalControllerIntegrationTest {
                 .andExpect(jsonPath("$.title").value("New Title"))
         }
 
-        @Test
-        fun `should update mood score successfully`() {
-            val created = createEntry()
-
-            val request = UpdateJournalMetadataRequest(moodScore = 8)
-
-            mockMvc.perform(
-                patch("/api/journal/${created.id}")
-                    .header("Authorization", "Bearer $accessToken")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request))
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.moodScore").value(8))
-        }
-
-        @Test
-        fun `should return 400 for invalid mood score`() {
-            val created = createEntry()
-
-            val request = mapOf("moodScore" to 15)
-
-            mockMvc.perform(
-                patch("/api/journal/${created.id}")
-                    .header("Authorization", "Bearer $accessToken")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request))
-            )
-                .andExpect(status().isBadRequest)
-                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-        }
-
-        @Test
-        fun `should return 400 for mood score below 1`() {
-            val created = createEntry()
-
-            val request = mapOf("moodScore" to 0)
-
-            mockMvc.perform(
-                patch("/api/journal/${created.id}")
-                    .header("Authorization", "Bearer $accessToken")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request))
-            )
-                .andExpect(status().isBadRequest)
-        }
+        // Note: moodScore is AI-generated and cannot be manually updated
     }
 
     @Nested
