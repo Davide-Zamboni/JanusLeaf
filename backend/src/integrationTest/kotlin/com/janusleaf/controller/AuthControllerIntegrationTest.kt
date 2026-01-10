@@ -2,6 +2,7 @@ package com.janusleaf.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.janusleaf.dto.*
+import com.janusleaf.repository.RefreshTokenRepository
 import com.janusleaf.repository.UserRepository
 import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,7 +21,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("integrationTest")
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @DisplayName("AuthController Integration Tests")
 class AuthControllerIntegrationTest {
 
@@ -33,27 +33,48 @@ class AuthControllerIntegrationTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
+    @Autowired
+    private lateinit var refreshTokenRepository: RefreshTokenRepository
+
     companion object {
-        private var accessToken: String? = null
-        private var refreshToken: String? = null
-        
         private const val TEST_EMAIL = "integration@example.com"
         private const val TEST_USERNAME = "IntegrationUser"
         private const val TEST_PASSWORD = "SecurePass123!"
     }
 
+    private fun cleanDatabase() {
+        refreshTokenRepository.deleteAll()
+        userRepository.deleteAll()
+    }
+
+    private fun registerUser(email: String = TEST_EMAIL, username: String = TEST_USERNAME): AuthResponse {
+        val request = RegisterRequest(email = email, username = username, password = TEST_PASSWORD)
+        val result = mockMvc.perform(
+            post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        ).andReturn()
+        return objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
+    }
+
+    private fun loginUser(email: String = TEST_EMAIL): AuthResponse {
+        val request = LoginRequest(email = email, password = TEST_PASSWORD)
+        val result = mockMvc.perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        ).andReturn()
+        return objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
+    }
+
     @Nested
     @DisplayName("POST /api/auth/register")
-    @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
     inner class Register {
 
         @BeforeEach
-        fun cleanUp() {
-            userRepository.deleteAll()
-        }
+        fun setUp() = cleanDatabase()
 
         @Test
-        @Order(1)
         fun `should register new user successfully`() {
             val request = RegisterRequest(
                 email = TEST_EMAIL,
@@ -61,7 +82,7 @@ class AuthControllerIntegrationTest {
                 password = TEST_PASSWORD
             )
 
-            val result = mockMvc.perform(
+            mockMvc.perform(
                 post("/api/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request))
@@ -72,26 +93,15 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.user.email").value(TEST_EMAIL))
                 .andExpect(jsonPath("$.user.username").value(TEST_USERNAME))
-                .andReturn()
 
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
-            refreshToken = response.refreshToken
+            // Verify refresh token is stored in database
+            Assertions.assertEquals(1, refreshTokenRepository.count())
         }
 
         @Test
         fun `should return 409 when email already exists`() {
             // First register a user
-            val request = RegisterRequest(
-                email = "duplicate@example.com",
-                username = "User1",
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request))
-            ).andExpect(status().isCreated)
+            registerUser("duplicate@example.com", "User1")
 
             // Try to register again with same email
             val duplicateRequest = RegisterRequest(
@@ -167,18 +177,9 @@ class AuthControllerIntegrationTest {
     inner class Login {
 
         @BeforeEach
-        fun createUser() {
-            userRepository.deleteAll()
-            val request = RegisterRequest(
-                email = TEST_EMAIL,
-                username = TEST_USERNAME,
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request))
-            )
+        fun setUp() {
+            cleanDatabase()
+            registerUser()
         }
 
         @Test
@@ -188,7 +189,7 @@ class AuthControllerIntegrationTest {
                 password = TEST_PASSWORD
             )
 
-            val result = mockMvc.perform(
+            mockMvc.perform(
                 post("/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request))
@@ -198,11 +199,9 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.refreshToken").exists())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.user.email").value(TEST_EMAIL))
-                .andReturn()
 
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
-            refreshToken = response.refreshToken
+            // Should have 2 refresh tokens now (one from register, one from login)
+            Assertions.assertEquals(2, refreshTokenRepository.count())
         }
 
         @Test
@@ -240,39 +239,20 @@ class AuthControllerIntegrationTest {
 
     @Nested
     @DisplayName("POST /api/auth/refresh")
-    inner class RefreshToken {
+    inner class RefreshTokenTests {
 
-        private lateinit var currentRefreshToken: String
+        private lateinit var tokens: AuthResponse
 
         @BeforeEach
-        fun loginUser() {
-            userRepository.deleteAll()
-            val registerRequest = RegisterRequest(
-                email = TEST_EMAIL,
-                username = TEST_USERNAME,
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(registerRequest))
-            )
-
-            val loginRequest = LoginRequest(email = TEST_EMAIL, password = TEST_PASSWORD)
-            val result = mockMvc.perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest))
-            ).andReturn()
-
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
-            currentRefreshToken = response.refreshToken
+        fun setUp() {
+            cleanDatabase()
+            registerUser()
+            tokens = loginUser()
         }
 
         @Test
         fun `should refresh token successfully`() {
-            val request = RefreshTokenRequest(refreshToken = currentRefreshToken)
+            val request = RefreshTokenRequest(refreshToken = tokens.refreshToken)
 
             mockMvc.perform(
                 post("/api/auth/refresh")
@@ -300,39 +280,109 @@ class AuthControllerIntegrationTest {
     }
 
     @Nested
+    @DisplayName("POST /api/auth/logout")
+    inner class LogoutTests {
+
+        private lateinit var tokens: AuthResponse
+
+        @BeforeEach
+        fun setUp() {
+            cleanDatabase()
+            tokens = registerUser()
+        }
+
+        @Test
+        fun `should logout successfully and revoke refresh token`() {
+            val request = LogoutRequest(refreshToken = tokens.refreshToken)
+
+            mockMvc.perform(
+                post("/api/auth/logout")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request))
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.message").value("Logged out successfully"))
+
+            // Try to use the revoked refresh token - should fail
+            val refreshRequest = RefreshTokenRequest(refreshToken = tokens.refreshToken)
+            mockMvc.perform(
+                post("/api/auth/refresh")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(refreshRequest))
+            )
+                .andExpect(status().isUnauthorized)
+        }
+
+        @Test
+        fun `should handle logout with invalid token gracefully`() {
+            val request = LogoutRequest(refreshToken = "invalid.token.here")
+
+            mockMvc.perform(
+                post("/api/auth/logout")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request))
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.message").value("Logged out successfully"))
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/auth/logout-all")
+    inner class LogoutAllTests {
+
+        private lateinit var tokens: AuthResponse
+
+        @BeforeEach
+        fun setUp() {
+            cleanDatabase()
+            tokens = registerUser()
+            // Create additional sessions by logging in multiple times
+            repeat(2) { loginUser() }
+        }
+
+        @Test
+        fun `should logout from all devices`() {
+            // Should have 3 refresh tokens (1 register + 2 logins)
+            Assertions.assertEquals(3, refreshTokenRepository.count())
+
+            mockMvc.perform(
+                post("/api/auth/logout-all")
+                    .header("Authorization", "Bearer ${tokens.accessToken}")
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.message").value("Logged out from 3 device(s)"))
+
+            // All refresh tokens should be revoked now
+            // Try to use the original refresh token - should fail
+            val refreshRequest = RefreshTokenRequest(refreshToken = tokens.refreshToken)
+            mockMvc.perform(
+                post("/api/auth/refresh")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(refreshRequest))
+            )
+                .andExpect(status().isUnauthorized)
+        }
+    }
+
+    @Nested
     @DisplayName("GET /api/auth/me")
     inner class GetCurrentUser {
 
+        private lateinit var tokens: AuthResponse
+
         @BeforeEach
-        fun loginUser() {
-            userRepository.deleteAll()
-            val registerRequest = RegisterRequest(
-                email = TEST_EMAIL,
-                username = TEST_USERNAME,
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(registerRequest))
-            )
-
-            val loginRequest = LoginRequest(email = TEST_EMAIL, password = TEST_PASSWORD)
-            val result = mockMvc.perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest))
-            ).andReturn()
-
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
+        fun setUp() {
+            cleanDatabase()
+            registerUser()
+            tokens = loginUser()
         }
 
         @Test
         fun `should return current user when authenticated`() {
             mockMvc.perform(
                 get("/api/auth/me")
-                    .header("Authorization", "Bearer $accessToken")
+                    .header("Authorization", "Bearer ${tokens.accessToken}")
             )
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$.email").value(TEST_EMAIL))
@@ -360,29 +410,13 @@ class AuthControllerIntegrationTest {
     @DisplayName("PUT /api/auth/me")
     inner class UpdateProfile {
 
+        private lateinit var tokens: AuthResponse
+
         @BeforeEach
-        fun loginUser() {
-            userRepository.deleteAll()
-            val registerRequest = RegisterRequest(
-                email = TEST_EMAIL,
-                username = TEST_USERNAME,
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(registerRequest))
-            )
-
-            val loginRequest = LoginRequest(email = TEST_EMAIL, password = TEST_PASSWORD)
-            val result = mockMvc.perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest))
-            ).andReturn()
-
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
+        fun setUp() {
+            cleanDatabase()
+            registerUser()
+            tokens = loginUser()
         }
 
         @Test
@@ -391,7 +425,7 @@ class AuthControllerIntegrationTest {
 
             mockMvc.perform(
                 put("/api/auth/me")
-                    .header("Authorization", "Bearer $accessToken")
+                    .header("Authorization", "Bearer ${tokens.accessToken}")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request))
             )
@@ -405,33 +439,17 @@ class AuthControllerIntegrationTest {
     @DisplayName("POST /api/auth/change-password")
     inner class ChangePassword {
 
+        private lateinit var tokens: AuthResponse
+
         @BeforeEach
-        fun loginUser() {
-            userRepository.deleteAll()
-            val registerRequest = RegisterRequest(
-                email = "changepwd@example.com",
-                username = "ChangePwdUser",
-                password = TEST_PASSWORD
-            )
-            mockMvc.perform(
-                post("/api/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(registerRequest))
-            )
-
-            val loginRequest = LoginRequest(email = "changepwd@example.com", password = TEST_PASSWORD)
-            val result = mockMvc.perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest))
-            ).andReturn()
-
-            val response = objectMapper.readValue(result.response.contentAsString, AuthResponse::class.java)
-            accessToken = response.accessToken
+        fun setUp() {
+            cleanDatabase()
+            registerUser("changepwd@example.com", "ChangePwdUser")
+            tokens = loginUser("changepwd@example.com")
         }
 
         @Test
-        fun `should change password successfully`() {
+        fun `should change password and revoke all sessions`() {
             val request = ChangePasswordRequest(
                 currentPassword = TEST_PASSWORD,
                 newPassword = "NewSecurePass456!"
@@ -439,12 +457,12 @@ class AuthControllerIntegrationTest {
 
             mockMvc.perform(
                 post("/api/auth/change-password")
-                    .header("Authorization", "Bearer $accessToken")
+                    .header("Authorization", "Bearer ${tokens.accessToken}")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request))
             )
                 .andExpect(status().isOk)
-                .andExpect(jsonPath("$.message").value("Password changed successfully"))
+                .andExpect(jsonPath("$.message").value("Password changed successfully. Please login again on all devices."))
 
             // Verify can login with new password
             val loginRequest = LoginRequest(
@@ -457,6 +475,15 @@ class AuthControllerIntegrationTest {
                     .content(objectMapper.writeValueAsString(loginRequest))
             )
                 .andExpect(status().isOk)
+
+            // Old refresh token should be revoked
+            val refreshRequest = RefreshTokenRequest(refreshToken = tokens.refreshToken)
+            mockMvc.perform(
+                post("/api/auth/refresh")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(refreshRequest))
+            )
+                .andExpect(status().isUnauthorized)
         }
 
         @Test
@@ -468,7 +495,7 @@ class AuthControllerIntegrationTest {
 
             mockMvc.perform(
                 post("/api/auth/change-password")
-                    .header("Authorization", "Bearer $accessToken")
+                    .header("Authorization", "Bearer ${tokens.accessToken}")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request))
             )

@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "🐘 Starting PostgreSQL database..."
 
@@ -20,7 +20,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Start the database
-cd "$PROJECT_DIR"
+cd "$BACKEND_DIR"
 docker-compose -f docker-compose.dev.yml up -d
 
 echo ""
@@ -33,4 +33,4 @@ echo "   Database: janusleaf"
 echo "   Username: janusleaf"
 echo "   Password: janusleaf"
 echo ""
-echo "🚀 Now run the app from IntelliJ: 'JanusLeaf Application'"
+echo "🚀 Now run the app: ./gradlew bootRun"

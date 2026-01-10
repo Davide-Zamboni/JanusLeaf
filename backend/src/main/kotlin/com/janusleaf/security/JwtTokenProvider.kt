@@ -35,6 +35,7 @@ class JwtTokenProvider(
         val expiryDate = Date(now.time + expiration)
 
         return Jwts.builder()
+            .id(UUID.randomUUID().toString()) // Unique token ID to prevent duplicates
             .subject(userId.toString())
             .claim("email", email)
             .claim("type", type.name)

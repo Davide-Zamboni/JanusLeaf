@@ -50,6 +50,11 @@ data class UpdateProfileRequest(
     val username: String?
 )
 
+data class LogoutRequest(
+    @field:NotBlank(message = "Refresh token is required")
+    val refreshToken: String
+)
+
 // ==================== Response DTOs ====================
 
 data class UserResponse(

@@ -2,13 +2,11 @@ name: Tests
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
-    branches: [ main, master, develop ]
+    branches: [ '**' ]
 
 jobs:
-  test:
-    name: Run Tests
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
     
     defaults:
@@ -27,22 +25,54 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        with:
+          gradle-version: '8.5'
 
       - name: Run unit tests
-        run: ./gradlew test
+        run: gradle test
 
-      - name: Run integration tests
-        run: ./gradlew integrationTest
-
-      - name: Upload test results
+      - name: Upload unit test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: unit-test-results
           path: |
-            backend/build/reports/tests/
-            backend/build/test-results/
+            backend/build/reports/tests/test/
+            backend/build/test-results/test/
+          retention-days: 7
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      - name: Run integration tests
+        run: gradle integrationTest
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            backend/build/reports/tests/integrationTest/
+            backend/build/test-results/integrationTest/
           retention-days: 7

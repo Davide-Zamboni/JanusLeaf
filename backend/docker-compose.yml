@@ -2,7 +2,7 @@ services:
   # Spring Boot Application
   app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: janusleaf-api
     ports:
@@ -12,7 +12,7 @@ services:
       - DATABASE_USERNAME=janusleaf
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-janusleaf_secret}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-that-is-at-least-256-bits-long-for-security}
-      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-86400000}
+      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-900000}
       - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
