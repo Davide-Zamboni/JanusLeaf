@@ -23,7 +23,7 @@ import kotlinx.serialization.json.Json
  */
 class AuthApiService(
     private val httpClient: HttpClient,
-    private val baseUrl: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.DEFAULT_BASE_URL
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     

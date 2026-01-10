@@ -4,9 +4,9 @@ package com.janusleaf.app.data.remote
  * API configuration for the JanusLeaf backend.
  */
 object ApiConfig {
-    // For development, use your local machine's IP or 10.0.2.2 for Android emulator
-    // For production, this would be your actual server URL
-    const val BASE_URL = "http://10.0.2.2:8080"
+    // Platform-specific base URLs are set via expect/actual
+    // Default fallback for common code
+    const val DEFAULT_BASE_URL = "http://localhost:8080"
     
     // API endpoints
     object Endpoints {
@@ -25,3 +25,10 @@ object ApiConfig {
     const val REQUEST_TIMEOUT_MS = 30_000L
     const val SOCKET_TIMEOUT_MS = 30_000L
 }
+
+/**
+ * Platform-specific base URL.
+ * - Android emulator: 10.0.2.2 (special IP to reach host)
+ * - iOS simulator: localhost (shares host network)
+ */
+expect fun getPlatformBaseUrl(): String

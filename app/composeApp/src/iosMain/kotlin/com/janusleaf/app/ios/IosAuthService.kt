@@ -3,6 +3,7 @@ package com.janusleaf.app.ios
 import com.janusleaf.app.data.local.IosSecureTokenStorage
 import com.janusleaf.app.data.remote.AuthApiService
 import com.janusleaf.app.data.remote.createApiHttpClient
+import com.janusleaf.app.data.remote.getPlatformBaseUrl
 import com.janusleaf.app.data.repository.AuthRepositoryImpl
 import com.janusleaf.app.domain.model.AuthResult
 import com.janusleaf.app.domain.model.User
@@ -24,9 +25,10 @@ import kotlinx.coroutines.launch
 class IosAuthService {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
+    private val baseUrl = getPlatformBaseUrl()
     private val tokenStorage = IosSecureTokenStorage()
     private val httpClient = createApiHttpClient()
-    private val apiService = AuthApiService(httpClient)
+    private val apiService = AuthApiService(httpClient, baseUrl)
     private val repository: AuthRepository = AuthRepositoryImpl(apiService, tokenStorage)
     
     // Observable state for SwiftUI
@@ -51,7 +53,10 @@ class IosAuthService {
     init {
         // Initialize Napier logging
         Napier.base(DebugAntilog())
-        Napier.d("IosAuthService initialized", tag = "iOS")
+        Napier.i("========================================", tag = "iOS")
+        Napier.i("IosAuthService initialized", tag = "iOS")
+        Napier.i("Base URL: $baseUrl", tag = "iOS")
+        Napier.i("========================================", tag = "iOS")
         
         // Check initial auth state
         checkAuthState()

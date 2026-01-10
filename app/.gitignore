@@ -1,12 +1,13 @@
 # Gradle
 .gradle/
-build/
+**/build/
 !gradle/wrapper/gradle-wrapper.jar
 
 # Local properties (contains local SDK paths)
 local.properties
 
-# Kotlin/Native
+# Kotlin
+.kotlin/
 *.klib
 *.knm
 
@@ -15,6 +16,7 @@ local.properties
 *.aab
 *.dex
 *.class
+*.hprof
 
 # iOS/Xcode user data
 **/xcuserdata/
@@ -22,16 +24,38 @@ local.properties
 **/*.xccheckout
 **/*.moved-aside
 **/*.xcscmblueprint
+**/*.xcworkspacedata
 
 # iOS build artifacts
-DerivedData/
+**/DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+*.xcarchive
+
+# Swift Package Manager
+.build/
+Package.resolved
+**/.swiftpm/
 
 # CocoaPods (if used)
-Pods/
+**/Pods/
 Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+Carthage/Checkouts/
 
 # macOS
 .DS_Store
+**/.DS_Store
+
+# IDE
+*.iml
+.idea/
+
+# Generated files
+*.generated.*
+
+# Crash logs
+*.crash

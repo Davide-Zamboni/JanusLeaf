@@ -91,53 +91,77 @@ struct AuthView: View {
     
     // MARK: - Glass Form Card
     private var glassFormCard: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             // Error message
             if let error = authManager.errorMessage {
                 errorBanner(message: error)
             }
             
-            // Email field
-            GlassTextField(
-                text: $email,
-                placeholder: "Email",
-                icon: "envelope.fill",
-                keyboardType: .emailAddress
-            )
+            // Email field with validation
+            VStack(alignment: .leading, spacing: 6) {
+                GlassTextField(
+                    text: $email,
+                    placeholder: "Email",
+                    icon: "envelope.fill",
+                    keyboardType: .emailAddress
+                )
+                
+                if !email.isEmpty && !authManager.isValidEmail(email) {
+                    ValidationHint(message: "Enter a valid email address")
+                }
+            }
             
             // Username field (register only)
             if isRegistering {
-                GlassTextField(
-                    text: $username,
-                    placeholder: "Username",
-                    icon: "person.fill"
-                )
+                VStack(alignment: .leading, spacing: 6) {
+                    GlassTextField(
+                        text: $username,
+                        placeholder: "Username",
+                        icon: "person.fill"
+                    )
+                    
+                    if !username.isEmpty && !authManager.isValidUsername(username) {
+                        ValidationHint(message: "Username must be 2-50 characters")
+                    }
+                }
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .move(edge: .top)),
                     removal: .opacity.combined(with: .move(edge: .top))
                 ))
             }
             
-            // Password field
-            GlassTextField(
-                text: $password,
-                placeholder: "Password",
-                icon: "lock.fill",
-                isSecure: !showPassword,
-                trailingIcon: showPassword ? "eye.slash.fill" : "eye.fill",
-                trailingAction: { showPassword.toggle() }
-            )
+            // Password field with validation
+            VStack(alignment: .leading, spacing: 6) {
+                GlassTextField(
+                    text: $password,
+                    placeholder: "Password",
+                    icon: "lock.fill",
+                    isSecure: !showPassword,
+                    trailingIcon: showPassword ? "eye.slash.fill" : "eye.fill",
+                    trailingAction: { showPassword.toggle() }
+                )
+                
+                if !password.isEmpty && !authManager.isValidPassword(password) {
+                    ValidationHint(message: "Password must be at least 8 characters")
+                }
+            }
             
             // Confirm password (register only)
             if isRegistering {
-                GlassTextField(
-                    text: $confirmPassword,
-                    placeholder: "Confirm Password",
-                    icon: "lock.fill",
-                    isSecure: !showConfirmPassword,
-                    trailingIcon: showConfirmPassword ? "eye.slash.fill" : "eye.fill",
-                    trailingAction: { showConfirmPassword.toggle() }
-                )
+                VStack(alignment: .leading, spacing: 6) {
+                    GlassTextField(
+                        text: $confirmPassword,
+                        placeholder: "Confirm Password",
+                        icon: "lock.fill",
+                        isSecure: !showConfirmPassword,
+                        trailingIcon: showConfirmPassword ? "eye.slash.fill" : "eye.fill",
+                        trailingAction: { showConfirmPassword.toggle() }
+                    )
+                    
+                    if !confirmPassword.isEmpty && password != confirmPassword {
+                        ValidationHint(message: "Passwords do not match")
+                    }
+                }
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .move(edge: .top)),
                     removal: .opacity.combined(with: .move(edge: .top))
@@ -150,9 +174,9 @@ struct AuthView: View {
             GlassButton(
                 title: isRegistering ? "Create Account" : "Sign In",
                 isLoading: authManager.isLoading,
+                isEnabled: isFormValid,
                 action: submit
             )
-            .disabled(!isFormValid)
         }
         .padding(24)
         .background(
@@ -326,6 +350,25 @@ struct FloatingOrbs: View {
                 animate = true
             }
         }
+    }
+}
+
+// MARK: - Validation Hint
+struct ValidationHint: View {
+    let message: String
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 12))
+            
+            Text(message)
+                .font(.system(size: 13, weight: .medium))
+        }
+        .foregroundColor(.orange.opacity(0.9))
+        .padding(.leading, 4)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .animation(.easeInOut(duration: 0.2), value: message)
     }
 }
 
