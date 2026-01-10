@@ -1,0 +1,17 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+jwt:
+  secret: test-secret-key-that-is-at-least-256-bits-long-for-testing-purposes-only
+  access-token-expiration: 3600000
+  refresh-token-expiration: 86400000
+
+logging:
+  level:
+    com.janusleaf: DEBUG
+    org.springframework.security: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN

@@ -1,0 +1,53 @@
+services:
+  # Spring Boot Application
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: janusleaf-api
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=jdbc:postgresql://db:5432/janusleaf
+      - DATABASE_USERNAME=janusleaf
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-janusleaf_secret}
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-that-is-at-least-256-bits-long-for-security}
+      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-86400000}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - janusleaf-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: janusleaf-db
+    environment:
+      - POSTGRES_DB=janusleaf
+      - POSTGRES_USER=janusleaf
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-janusleaf_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janusleaf -d janusleaf"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - janusleaf-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  janusleaf-network:
+    driver: bridge
