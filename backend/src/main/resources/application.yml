@@ -1,6 +1,8 @@
 spring:
   application:
     name: janusleaf
+  config:
+    import: optional:file:./secrets.properties
 
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/janusleaf}

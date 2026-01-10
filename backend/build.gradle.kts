@@ -74,6 +74,9 @@ dependencies {
     implementation("com.aallam.openai:openai-client:3.6.2")
     implementation("io.ktor:ktor-client-okhttp:2.3.7")
     
+    // Netty native DNS resolver for macOS (fixes DNS resolution warnings)
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.1.107.Final:osx-aarch_64")
+    
     // Dev tools
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     
