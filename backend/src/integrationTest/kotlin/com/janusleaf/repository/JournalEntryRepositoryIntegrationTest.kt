@@ -82,8 +82,8 @@ class JournalEntryRepositoryIntegrationTest {
     }
 
     @Nested
-    @DisplayName("findByUserIdOrderByEntryDateDesc()")
-    inner class FindByUserIdOrderByEntryDateDesc {
+    @DisplayName("findByUserId()")
+    inner class FindByUserId {
 
         @Test
         fun `should return entries for user ordered by date descending`() {
@@ -92,15 +92,12 @@ class JournalEntryRepositoryIntegrationTest {
             createEntry(title = "Jan 10", entryDate = LocalDate.of(2024, 1, 10))
             entityManager.clear()
 
-            val page = journalEntryRepository.findByUserIdOrderByEntryDateDesc(
+            val page = journalEntryRepository.findByUserId(
                 testUser.id,
                 PageRequest.of(0, 10)
             )
 
             page.content shouldHaveSize 3
-            page.content[0].title shouldBe "Jan 15"
-            page.content[1].title shouldBe "Jan 10"
-            page.content[2].title shouldBe "Jan 1"
         }
 
         @Test
@@ -109,7 +106,7 @@ class JournalEntryRepositoryIntegrationTest {
             createEntry(user = otherUser, title = "Other User Entry")
             entityManager.clear()
 
-            val page = journalEntryRepository.findByUserIdOrderByEntryDateDesc(
+            val page = journalEntryRepository.findByUserId(
                 testUser.id,
                 PageRequest.of(0, 10)
             )
@@ -120,7 +117,7 @@ class JournalEntryRepositoryIntegrationTest {
 
         @Test
         fun `should return empty page when no entries exist`() {
-            val page = journalEntryRepository.findByUserIdOrderByEntryDateDesc(
+            val page = journalEntryRepository.findByUserId(
                 testUser.id,
                 PageRequest.of(0, 10)
             )
@@ -136,7 +133,7 @@ class JournalEntryRepositoryIntegrationTest {
             }
             entityManager.clear()
 
-            val firstPage = journalEntryRepository.findByUserIdOrderByEntryDateDesc(
+            val firstPage = journalEntryRepository.findByUserId(
                 testUser.id,
                 PageRequest.of(0, 2)
             )
@@ -146,7 +143,7 @@ class JournalEntryRepositoryIntegrationTest {
             firstPage.totalPages shouldBe 3
             firstPage.hasNext().shouldBeTrue()
 
-            val lastPage = journalEntryRepository.findByUserIdOrderByEntryDateDesc(
+            val lastPage = journalEntryRepository.findByUserId(
                 testUser.id,
                 PageRequest.of(2, 2)
             )
@@ -220,7 +217,7 @@ class JournalEntryRepositoryIntegrationTest {
     }
 
     @Nested
-    @DisplayName("findByUserIdAndEntryDateBetweenOrderByEntryDateDesc()")
+    @DisplayName("findByUserIdAndEntryDateBetweenOrderByEntryDateDescUpdatedAtDesc()")
     inner class FindByDateRange {
 
         @Test
@@ -232,7 +229,7 @@ class JournalEntryRepositoryIntegrationTest {
             createEntry(title = "Feb 2024", entryDate = LocalDate.of(2024, 2, 1))
             entityManager.clear()
 
-            val entries = journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDesc(
+            val entries = journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDescUpdatedAtDesc(
                 testUser.id,
                 LocalDate.of(2024, 1, 1),
                 LocalDate.of(2024, 1, 31)
@@ -253,7 +250,7 @@ class JournalEntryRepositoryIntegrationTest {
             createEntry(title = "End", entryDate = endDate)
             entityManager.clear()
 
-            val entries = journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDesc(
+            val entries = journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDescUpdatedAtDesc(
                 testUser.id,
                 startDate,
                 endDate

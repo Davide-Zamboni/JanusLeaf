@@ -64,6 +64,7 @@ class IosAuthService {
     
     /**
      * Check if user is currently authenticated.
+     * If authenticated, also fetches the user profile.
      */
     fun checkAuthState() {
         scope.launch {
@@ -71,6 +72,20 @@ class IosAuthService {
                 val authenticated = repository.isAuthenticated()
                 _isAuthenticated.value = authenticated
                 Napier.d("Auth state checked: $authenticated", tag = "iOS")
+                
+                // If authenticated, fetch user profile
+                if (authenticated) {
+                    when (val result = repository.getCurrentUser()) {
+                        is AuthResult.Success -> {
+                            _currentUser.value = result.data
+                            Napier.d("Fetched user on auth check: ${result.data.username}", tag = "iOS")
+                        }
+                        is AuthResult.Error -> {
+                            Napier.e("Failed to fetch user on auth check: ${result.error}", tag = "iOS")
+                        }
+                        is AuthResult.Loading -> {}
+                    }
+                }
             } catch (e: Exception) {
                 Napier.e("Error checking auth state: ${e.message}", e, tag = "iOS")
                 _isAuthenticated.value = false
@@ -206,6 +221,37 @@ class IosAuthService {
      */
     fun clearError() {
         _errorMessage.value = null
+    }
+    
+    /**
+     * Fetch the current user profile from the server.
+     * Updates _currentUser on success.
+     */
+    fun fetchCurrentUser(
+        onSuccess: (User) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        scope.launch {
+            try {
+                when (val result = repository.getCurrentUser()) {
+                    is AuthResult.Success -> {
+                        _currentUser.value = result.data
+                        Napier.d("Fetched user: ${result.data.username}", tag = "iOS")
+                        onSuccess(result.data)
+                    }
+                    is AuthResult.Error -> {
+                        val message = result.error.toUserMessage()
+                        Napier.e("Failed to fetch user: $message", tag = "iOS")
+                        onError(message)
+                    }
+                    is AuthResult.Loading -> {}
+                }
+            } catch (e: Exception) {
+                val message = e.message ?: "Failed to fetch user"
+                Napier.e("Fetch user exception: $message", e, tag = "iOS")
+                onError(message)
+            }
+        }
     }
     
     // ==================== Observers for Swift ====================

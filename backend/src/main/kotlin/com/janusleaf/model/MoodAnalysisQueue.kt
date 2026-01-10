@@ -40,6 +40,13 @@ class MoodAnalysisQueue(
     @Column(name = "scheduled_for", nullable = false)
     var scheduledFor: Instant,
 
+    /**
+     * Number of times this entry has been retried.
+     * Used for exponential backoff on rate limit errors.
+     */
+    @Column(name = "retry_count", nullable = false)
+    var retryCount: Int = 0,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 

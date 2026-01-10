@@ -20,6 +20,8 @@
 		BBBB000100010005 /* JournalEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010006 /* JournalEditorView.swift */; };
 		BBBB000100010007 /* LiquidGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010008 /* LiquidGlassComponents.swift */; };
 		CCCC000100010001 /* AIMoodLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCC000100010002 /* AIMoodLoadingView.swift */; };
+		DDDD000100010001 /* MarkdownTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010002 /* MarkdownTextEditor.swift */; };
+		DDDD000100010003 /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010004 /* MarkdownRenderer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +39,8 @@
 		BBBB000100010006 /* JournalEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalEditorView.swift; sourceTree = "<group>"; };
 		BBBB000100010008 /* LiquidGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassComponents.swift; sourceTree = "<group>"; };
 		CCCC000100010002 /* AIMoodLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMoodLoadingView.swift; sourceTree = "<group>"; };
+		DDDD000100010002 /* MarkdownTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextEditor.swift; sourceTree = "<group>"; };
+		DDDD000100010004 /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +110,8 @@
 				AAAA00010001000A /* GlassButton.swift */,
 				BBBB000100010008 /* LiquidGlassComponents.swift */,
 				CCCC000100010002 /* AIMoodLoadingView.swift */,
+				DDDD000100010002 /* MarkdownTextEditor.swift */,
+				DDDD000100010004 /* MarkdownRenderer.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -193,6 +199,8 @@
 				BBBB000100010005 /* JournalEditorView.swift in Sources */,
 				BBBB000100010007 /* LiquidGlassComponents.swift in Sources */,
 				CCCC000100010001 /* AIMoodLoadingView.swift in Sources */,
+				DDDD000100010001 /* MarkdownTextEditor.swift in Sources */,
+				DDDD000100010003 /* MarkdownRenderer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

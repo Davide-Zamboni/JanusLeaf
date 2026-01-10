@@ -15,22 +15,40 @@ struct JournalEditorView: View {
     @State private var version: Int64 = 0
     
     @State private var showDeleteConfirmation = false
-    @State private var hasUnsavedChanges = false
+    @State private var hasUnsavedBodyChanges = false
+    @State private var originalTitle: String = ""
     @State private var isLoading = true
+    
+    // Error tracking
+    @State private var consecutiveFailures = 0
+    @State private var showErrorBanner = false
+    private let failureThreshold = 3
+    
+    // Strikethrough visibility toggle
+    @State private var showStrikethrough = true
     
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom navigation bar
-            customNavBar
+        ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                // Custom navigation bar
+                customNavBar
+                
+                // Content
+                if isLoading {
+                    loadingContent
+                } else {
+                    editorContent
+                }
+            }
             
-            // Content
-            if isLoading {
-                loadingContent
-            } else {
-                editorContent
+            // Error banner overlay
+            if showErrorBanner {
+                errorBanner
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(100)
             }
         }
         .background(Color(red: 0.05, green: 0.06, blue: 0.08))
@@ -43,6 +61,70 @@ struct JournalEditorView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This entry will be permanently deleted.")
+        }
+        .onChange(of: journalManager.errorMessage) { _, error in
+            if error != nil {
+                handleSaveError()
+                journalManager.clearError()
+            } else {
+                // Success - reset failure count
+                consecutiveFailures = 0
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showErrorBanner)
+    }
+    
+    // MARK: - Error Banner
+    
+    private var errorBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(.orange)
+            
+            Text("Having trouble saving. Check your connection.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.9))
+            
+            Spacer()
+            
+            Button(action: { 
+                withAnimation { showErrorBanner = false }
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.2, green: 0.15, blue: 0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 100) // Below nav bar
+    }
+    
+    private func handleSaveError() {
+        consecutiveFailures += 1
+        
+        // Only show banner after multiple failures
+        if consecutiveFailures >= failureThreshold && !showErrorBanner {
+            withAnimation {
+                showErrorBanner = true
+            }
+            
+            // Auto-hide after 5 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                withAnimation {
+                    showErrorBanner = false
+                }
+            }
         }
     }
     
@@ -63,6 +145,18 @@ struct JournalEditorView: View {
                 
                 Spacer()
                 
+                // Strikethrough visibility toggle
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        showStrikethrough.toggle()
+                    }
+                }) {
+                    Image(systemName: showStrikethrough ? "eye" : "eye.slash")
+                        .font(.system(size: 18))
+                        .foregroundColor(showStrikethrough ? .white.opacity(0.7) : .orange.opacity(0.8))
+                }
+                .padding(.trailing, 8)
+                
                 Menu {
                     Button(role: .destructive) { showDeleteConfirmation = true } label: {
                         Label("Delete", systemImage: "trash")
@@ -76,24 +170,8 @@ struct JournalEditorView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
             
-            // Status row
+            // Date row
             HStack {
-                if journalManager.isSaving {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .tint(.white.opacity(0.5))
-                    Text("Saving...")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                } else if journalManager.lastSavedAt != nil {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                    Text("Saved")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                
                 Spacer()
                 
                 if let date = entryDate {
@@ -128,26 +206,15 @@ struct JournalEditorView: View {
                         }
                     }
                 
-                // Body Text Editor
-                ZStack(alignment: .topLeading) {
-                    if bodyText.isEmpty {
-                        Text("Start writing...")
-                            .font(.body)
-                            .foregroundColor(.white.opacity(0.3))
-                            .padding(.top, 8)
-                            .padding(.leading, 4)
-                    }
-                    
-                    TextEditor(text: $bodyText)
-                        .font(.body)
-                        .foregroundStyle(.white)
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 300)
-                        .focused($isEditorFocused)
-                        .onChange(of: bodyText) { _, newValue in
-                            hasUnsavedChanges = true
-                            journalManager.updateBody(newValue, for: entryId)
-                        }
+                // Markdown Body Text Editor
+                MarkdownTextEditor(
+                    text: $bodyText,
+                    placeholder: "Start writing...",
+                    isFocused: $isEditorFocused,
+                    showStrikethrough: showStrikethrough
+                ) { newValue in
+                    hasUnsavedBodyChanges = true
+                    journalManager.updateBody(newValue, for: entryId)
                 }
             }
             .padding(16)
@@ -176,7 +243,18 @@ struct JournalEditorView: View {
     // MARK: - Actions
     
     private func handleBack() {
-        if hasUnsavedChanges {
+        let hasTitleChanges = title != originalTitle && !title.isEmpty
+        
+        // Save title first if changed, then handle body changes
+        if hasTitleChanges {
+            journalManager.updateTitle(title, for: entryId) { _ in
+                if hasUnsavedBodyChanges {
+                    journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+                } else {
+                    dismiss()
+                }
+            }
+        } else if hasUnsavedBodyChanges {
             journalManager.forceSave(entryId: entryId) { _ in dismiss() }
         } else {
             dismiss()
@@ -187,6 +265,7 @@ struct JournalEditorView: View {
         journalManager.getEntry(id: entryId) { journal in
             guard let journal = journal else { return }
             self.title = journal.title
+            self.originalTitle = journal.title
             self.bodyText = journal.body
             self.moodScore = journal.moodScore.map { Int($0.intValue) }
             self.entryDate = journal.entryDate
@@ -196,12 +275,10 @@ struct JournalEditorView: View {
     }
     
     private func saveTitle() {
-        guard !title.isEmpty else { return }
+        guard !title.isEmpty, title != originalTitle else { return }
         journalManager.updateTitle(title, for: entryId) { success in
             if success {
-                print("Title saved successfully")
-            } else {
-                print("Failed to save title")
+                self.originalTitle = self.title
             }
         }
     }

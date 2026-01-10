@@ -6,11 +6,11 @@ struct JournalListView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var journalManager: JournalManager
     
-    @State private var showNewEntry = false
     @State private var selectedEntryId: String? = nil
     @State private var showLogoutConfirmation = false
     @State private var animateItems = false
     @State private var moodPollingTimer: Timer? = nil
+    @State private var isCreatingEntry = false
     
     var body: some View {
         NavigationStack {
@@ -34,19 +34,17 @@ struct JournalListView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: Binding(
                 get: { selectedEntryId != nil },
-                set: { if !$0 { selectedEntryId = nil } }
+                set: { 
+                    if !$0 { 
+                        selectedEntryId = nil
+                        // Refresh entries when coming back from editor
+                        journalManager.refresh()
+                    } 
+                }
             )) {
                 if let entryId = selectedEntryId {
                     JournalEditorView(entryId: entryId)
                         .environmentObject(journalManager)
-                }
-            }
-            .sheet(isPresented: $showNewEntry) {
-                NewEntrySheet { journal in
-                    if let journal = journal {
-                        // Navigate to editor with the new entry
-                        selectedEntryId = journal.id
-                    }
                 }
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
@@ -94,7 +92,7 @@ struct JournalListView: View {
     private var headerView: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Journal")
+                Text(headerTitle)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 
@@ -164,7 +162,7 @@ struct JournalListView: View {
     // MARK: - New Entry Button
     
     private var newEntryButton: some View {
-        Button(action: { showNewEntry = true }) {
+        Button(action: createNewEntry) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -178,9 +176,14 @@ struct JournalListView: View {
                         .frame(width: 48, height: 48)
                         .shadow(color: .green.opacity(0.4), radius: 12, x: 0, y: 6)
                     
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.white)
+                    if isCreatingEntry {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: "plus")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -217,6 +220,23 @@ struct JournalListView: View {
             )
         }
         .buttonStyle(ScaleButtonStyle())
+        .disabled(isCreatingEntry)
+    }
+    
+    private func createNewEntry() {
+        guard !isCreatingEntry else { return }
+        isCreatingEntry = true
+        
+        journalManager.createEntry(
+            title: nil,
+            body: nil,
+            entryDate: Date()
+        ) { journal in
+            isCreatingEntry = false
+            if let journal = journal {
+                selectedEntryId = journal.id
+            }
+        }
     }
     
     // MARK: - Empty State
@@ -252,10 +272,15 @@ struct JournalListView: View {
                     .multilineTextAlignment(.center)
             }
             
-            Button(action: { showNewEntry = true }) {
+            Button(action: createNewEntry) {
                 HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Create Entry")
+                    if isCreatingEntry {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Create Entry")
+                    }
                 }
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(.white)
@@ -274,6 +299,7 @@ struct JournalListView: View {
                 .shadow(color: .green.opacity(0.4), radius: 20, x: 0, y: 10)
             }
             .buttonStyle(ScaleButtonStyle())
+            .disabled(isCreatingEntry)
             
             Spacer()
         }
@@ -320,6 +346,13 @@ struct JournalListView: View {
     
     // MARK: - Helpers
     
+    private var headerTitle: String {
+        if let username = authManager.currentUsername, !username.isEmpty {
+            return "\(username)'s Journal"
+        }
+        return "Journal"
+    }
+    
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMMM d"
@@ -357,13 +390,13 @@ struct JournalEntryCard: View {
                     MoodBadge(score: entry.moodScore.map { Int($0.intValue) })
                 }
                 
-                // Body preview
+                // Body preview with markdown rendering (strikethrough, bold, etc.)
                 if !entry.bodyPreview.isEmpty {
-                    Text(entry.bodyPreview)
-                        .font(.system(size: 15))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(3)
-                        .multilineTextAlignment(.leading)
+                    MarkdownRenderer(
+                        entry.bodyPreview,
+                        lineLimit: 3,
+                        baseColor: .white.opacity(0.7)
+                    )
                 }
                 
                 // Footer
@@ -434,113 +467,6 @@ struct MoodBadge: View {
     
     var body: some View {
         AnimatedMoodBadge(score: score)
-    }
-}
-
-// MARK: - New Entry Sheet
-
-@available(iOS 17.0, *)
-struct NewEntrySheet: View {
-    @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var journalManager: JournalManager
-    
-    @State private var title = ""
-    @State private var selectedDate = Date()
-    @State private var isCreating = false
-    
-    let onComplete: (Journal?) -> Void
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color(red: 0.08, green: 0.1, blue: 0.12)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 24) {
-                    // Title input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Title (optional)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        TextField("Leave empty for today's date", text: $title)
-                            .font(.system(size: 17))
-                            .foregroundColor(.white)
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.white.opacity(0.08))
-                            )
-                    }
-                    
-                    // Date picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Entry Date")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .colorScheme(.dark)
-                            .tint(.green)
-                    }
-                    
-                    Spacer()
-                    
-                    // Create button
-                    Button(action: createEntry) {
-                        HStack {
-                            if isCreating {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Text("Start Writing")
-                                    .font(.system(size: 17, weight: .semibold))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.2, green: 0.5, blue: 0.3), Color(red: 0.15, green: 0.45, blue: 0.25)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                        .foregroundColor(.white)
-                    }
-                    .disabled(isCreating)
-                }
-                .padding(24)
-            }
-            .navigationTitle("New Entry")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(.white.opacity(0.7))
-                }
-            }
-        }
-    }
-    
-    private func createEntry() {
-        isCreating = true
-        
-        journalManager.createEntry(
-            title: title.isEmpty ? nil : title,
-            body: nil,
-            entryDate: selectedDate
-        ) { journal in
-            isCreating = false
-            dismiss()
-            onComplete(journal)
-        }
     }
 }
 

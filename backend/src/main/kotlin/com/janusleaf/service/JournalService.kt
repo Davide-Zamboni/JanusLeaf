@@ -67,11 +67,16 @@ class JournalService(
 
     /**
      * Get paginated list of journal entries for a user.
+     * Ordered by entry_date DESC, then by updated_at DESC for same dates.
      */
     @Transactional(readOnly = true)
     fun getEntries(userId: UUID, page: Int, size: Int): JournalEntriesPageResponse {
-        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "entryDate"))
-        val entriesPage = journalEntryRepository.findByUserIdOrderByEntryDateDesc(userId, pageable)
+        val sort = Sort.by(
+            Sort.Order.desc("entryDate"),
+            Sort.Order.desc("updatedAt")
+        )
+        val pageable = PageRequest.of(page, size, sort)
+        val entriesPage = journalEntryRepository.findByUserId(userId, pageable)
 
         return JournalEntriesPageResponse(
             entries = entriesPage.content.map { it.toSummaryResponse() },
@@ -86,6 +91,7 @@ class JournalService(
 
     /**
      * Get journal entries within a date range.
+     * Ordered by entry_date DESC, then by updated_at DESC for same dates.
      */
     @Transactional(readOnly = true)
     fun getEntriesByDateRange(
@@ -93,7 +99,7 @@ class JournalService(
         startDate: LocalDate, 
         endDate: LocalDate
     ): List<JournalEntrySummaryResponse> {
-        return journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDesc(
+        return journalEntryRepository.findByUserIdAndEntryDateBetweenOrderByEntryDateDescUpdatedAtDesc(
             userId, startDate, endDate
         ).map { it.toSummaryResponse() }
     }
@@ -122,8 +128,10 @@ class JournalService(
         }
 
         entry.body = request.body
-        entry.moodScore = null  // Reset mood score - will be recalculated by AI
         val savedEntry = journalEntryRepository.saveAndFlush(entry)
+        
+        // Reset mood score using explicit native query to ensure null is properly persisted
+        journalEntryRepository.resetMoodScore(entryId)
         
         // Queue async mood analysis (debounced via database - multiple rapid edits won't spam the API)
         moodAnalysisService.queueMoodAnalysis(savedEntry.id, savedEntry.body)

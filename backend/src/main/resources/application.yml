@@ -46,6 +46,17 @@ openrouter:
   model: ${OPENROUTER_MODEL:google/gemma-3-27b-it:free}
   # Debounce delay in milliseconds - wait this long after last edit before analyzing
   debounce-delay-ms: ${MOOD_DEBOUNCE_DELAY:5000}
+  # Rate limiting configuration
+  request-delay-ms: ${OPENROUTER_REQUEST_DELAY:2000}
+  rate-limit-backoff-base-ms: ${OPENROUTER_BACKOFF_BASE:10000}
+  max-retries: ${OPENROUTER_MAX_RETRIES:5}
+  # Fallback API (ChatAnywhere - OpenAI compatible)
+  # See: https://github.com/chatanywhere/GPT_API_free
+  fallback:
+    enabled: ${FALLBACK_API_ENABLED:false}
+    api-key: ${FALLBACK_API_KEY:}
+    base-url: ${FALLBACK_API_BASE_URL:https://api.chatanywhere.org/v1}
+    model: ${FALLBACK_API_MODEL:gpt-4o-mini}
 
 # Scheduled Jobs Configuration
 jobs:
