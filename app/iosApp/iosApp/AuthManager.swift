@@ -10,10 +10,12 @@ class AuthManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var errorMessage: String? = nil
     @Published var currentUserEmail: String? = nil
+    @Published var currentUsername: String? = nil
     
     private var loadingCancellable: Cancellable?
     private var authCancellable: Cancellable?
     private var errorCancellable: Cancellable?
+    private var userCancellable: Cancellable?
     
     init() {
         self.authService = SharedModule.shared.createAuthService()
@@ -39,6 +41,14 @@ class AuthManager: ObservableObject {
         errorCancellable = authService.observeError { [weak self] value in
             DispatchQueue.main.async {
                 self?.errorMessage = value
+            }
+        }
+        
+        // Observe current user
+        userCancellable = authService.observeUser { [weak self] user in
+            DispatchQueue.main.async {
+                self?.currentUsername = user?.username
+                self?.currentUserEmail = user?.email
             }
         }
     }
@@ -74,6 +84,7 @@ class AuthManager: ObservableObject {
         authService.logout {
             DispatchQueue.main.async { [weak self] in
                 self?.currentUserEmail = nil
+                self?.currentUsername = nil
             }
         }
     }
@@ -98,5 +109,6 @@ class AuthManager: ObservableObject {
         loadingCancellable?.cancel()
         authCancellable?.cancel()
         errorCancellable?.cancel()
+        userCancellable?.cancel()
     }
 }

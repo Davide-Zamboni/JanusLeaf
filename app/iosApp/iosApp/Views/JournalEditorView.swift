@@ -15,7 +15,8 @@ struct JournalEditorView: View {
     @State private var version: Int64 = 0
     
     @State private var showDeleteConfirmation = false
-    @State private var hasUnsavedChanges = false
+    @State private var hasUnsavedBodyChanges = false
+    @State private var originalTitle: String = ""
     @State private var isLoading = true
     
     @FocusState private var isEditorFocused: Bool
@@ -145,7 +146,7 @@ struct JournalEditorView: View {
                         .frame(minHeight: 300)
                         .focused($isEditorFocused)
                         .onChange(of: bodyText) { _, newValue in
-                            hasUnsavedChanges = true
+                            hasUnsavedBodyChanges = true
                             journalManager.updateBody(newValue, for: entryId)
                         }
                 }
@@ -176,7 +177,18 @@ struct JournalEditorView: View {
     // MARK: - Actions
     
     private func handleBack() {
-        if hasUnsavedChanges {
+        let hasTitleChanges = title != originalTitle && !title.isEmpty
+        
+        // Save title first if changed, then handle body changes
+        if hasTitleChanges {
+            journalManager.updateTitle(title, for: entryId) { _ in
+                if hasUnsavedBodyChanges {
+                    journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+                } else {
+                    dismiss()
+                }
+            }
+        } else if hasUnsavedBodyChanges {
             journalManager.forceSave(entryId: entryId) { _ in dismiss() }
         } else {
             dismiss()
@@ -187,6 +199,7 @@ struct JournalEditorView: View {
         journalManager.getEntry(id: entryId) { journal in
             guard let journal = journal else { return }
             self.title = journal.title
+            self.originalTitle = journal.title
             self.bodyText = journal.body
             self.moodScore = journal.moodScore.map { Int($0.intValue) }
             self.entryDate = journal.entryDate
@@ -196,9 +209,10 @@ struct JournalEditorView: View {
     }
     
     private func saveTitle() {
-        guard !title.isEmpty else { return }
+        guard !title.isEmpty, title != originalTitle else { return }
         journalManager.updateTitle(title, for: entryId) { success in
             if success {
+                self.originalTitle = self.title
                 print("Title saved successfully")
             } else {
                 print("Failed to save title")

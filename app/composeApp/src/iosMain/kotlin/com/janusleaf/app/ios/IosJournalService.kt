@@ -1,6 +1,7 @@
 package com.janusleaf.app.ios
 
 import com.janusleaf.app.data.local.IosSecureTokenStorage
+import com.janusleaf.app.data.remote.AuthApiService
 import com.janusleaf.app.data.remote.JournalApiService
 import com.janusleaf.app.data.remote.createApiHttpClient
 import com.janusleaf.app.data.remote.getPlatformBaseUrl
@@ -27,8 +28,9 @@ class IosJournalService {
     private val baseUrl = getPlatformBaseUrl()
     private val tokenStorage = IosSecureTokenStorage()
     private val httpClient = createApiHttpClient()
-    private val apiService = JournalApiService(httpClient, baseUrl)
-    private val repository: JournalRepository = JournalRepositoryImpl(apiService, tokenStorage)
+    private val journalApiService = JournalApiService(httpClient, baseUrl)
+    private val authApiService = AuthApiService(httpClient, baseUrl)
+    private val repository: JournalRepository = JournalRepositoryImpl(journalApiService, tokenStorage, authApiService)
     
     // Observable state for SwiftUI
     private val _isLoading = MutableStateFlow(false)
@@ -183,6 +185,8 @@ class IosJournalService {
             when (val result = repository.getEntry(id)) {
                 is JournalResult.Success -> {
                     _currentEntry.value = result.data
+                    // Also update the entry in the list to sync with backend data
+                    updateEntryFromJournal(result.data)
                     _isLoading.value = false
                     onSuccess(result.data)
                 }
@@ -254,12 +258,8 @@ class IosJournalService {
             when (val result = repository.updateMetadata(id, title, moodScore, currentVersion)) {
                 is JournalResult.Success -> {
                     _currentEntry.value = result.data
-                    // Update in list
-                    updateEntryInList(
-                        id,
-                        title = title,
-                        moodScore = moodScore
-                    )
+                    // Update in list using actual response data
+                    updateEntryFromJournal(result.data)
                     _isLoading.value = false
                     onSuccess(result.data)
                 }
@@ -322,7 +322,7 @@ class IosJournalService {
         _errorMessage.value = null
     }
     
-    // Helper to update an entry in the list
+    // Helper to update an entry in the list (for partial updates where null means "don't change")
     private fun updateEntryInList(
         id: String,
         title: String? = null,
@@ -337,6 +337,42 @@ class IosJournalService {
                 title = title ?: entry.title,
                 bodyPreview = bodyPreview ?: entry.bodyPreview,
                 moodScore = moodScore ?: entry.moodScore
+            )
+            _entries.value = currentEntries
+        }
+    }
+    
+    // Helper to update an entry in the list from a full Journal response (preserves nulls)
+    private fun updateEntryFromJournal(journal: Journal) {
+        val currentEntries = _entries.value.toMutableList()
+        val index = currentEntries.indexOfFirst { it.id == journal.id }
+        if (index >= 0) {
+            currentEntries[index] = JournalPreview(
+                id = journal.id,
+                title = journal.title,
+                bodyPreview = journal.body.take(150),
+                moodScore = journal.moodScore,
+                entryDate = journal.entryDate,
+                updatedAt = journal.updatedAt
+            )
+            _entries.value = currentEntries
+        }
+    }
+    
+    // Helper to update body preview and reset mood score (for when body changes trigger AI re-analysis)
+    private fun updateEntryBodyAndResetMood(
+        id: String,
+        bodyPreview: String,
+        updatedAt: kotlinx.datetime.Instant
+    ) {
+        val currentEntries = _entries.value.toMutableList()
+        val index = currentEntries.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            val entry = currentEntries[index]
+            currentEntries[index] = entry.copy(
+                bodyPreview = bodyPreview,
+                moodScore = null, // Reset to null - AI will recalculate
+                updatedAt = updatedAt
             )
             _entries.value = currentEntries
         }

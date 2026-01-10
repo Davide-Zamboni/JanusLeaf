@@ -34,7 +34,13 @@ struct JournalListView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: Binding(
                 get: { selectedEntryId != nil },
-                set: { if !$0 { selectedEntryId = nil } }
+                set: { 
+                    if !$0 { 
+                        selectedEntryId = nil
+                        // Refresh entries when coming back from editor
+                        journalManager.refresh()
+                    } 
+                }
             )) {
                 if let entryId = selectedEntryId {
                     JournalEditorView(entryId: entryId)
@@ -94,7 +100,7 @@ struct JournalListView: View {
     private var headerView: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Journal")
+                Text(headerTitle)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 
@@ -319,6 +325,13 @@ struct JournalListView: View {
     }
     
     // MARK: - Helpers
+    
+    private var headerTitle: String {
+        if let username = authManager.currentUsername, !username.isEmpty {
+            return "\(username)'s Journal"
+        }
+        return "Journal"
+    }
     
     private var formattedDate: String {
         let formatter = DateFormatter()

@@ -1,5 +1,6 @@
 package com.janusleaf.app.data.repository
 
+import com.janusleaf.app.data.remote.AuthApiService
 import com.janusleaf.app.data.remote.JournalApiService
 import com.janusleaf.app.domain.model.*
 import com.janusleaf.app.domain.repository.JournalRepository
@@ -10,23 +11,75 @@ import kotlinx.datetime.LocalDate
 /**
  * Implementation of JournalRepository.
  * Coordinates between the API service and token storage for authenticated requests.
+ * Handles automatic token refresh on 401 errors.
  */
 class JournalRepositoryImpl(
     private val apiService: JournalApiService,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val authApiService: AuthApiService? = null // Optional for token refresh
 ) : JournalRepository {
     
     private suspend fun getAccessToken(): String? = tokenStorage.getAccessToken()
+    
+    /**
+     * Try to refresh the access token using the refresh token.
+     * Returns the new access token if successful, null otherwise.
+     */
+    private suspend fun tryRefreshToken(): String? {
+        val authApi = authApiService ?: return null
+        val refreshToken = tokenStorage.getRefreshToken() ?: return null
+        
+        return when (val result = authApi.refreshToken(refreshToken)) {
+            is AuthResult.Success -> {
+                val newAccessToken = result.data.accessToken
+                tokenStorage.saveAccessToken(newAccessToken)
+                Napier.d("Token refreshed successfully in JournalRepository", tag = "JournalRepository")
+                newAccessToken
+            }
+            is AuthResult.Error -> {
+                Napier.e("Token refresh failed: ${result.error}", tag = "JournalRepository")
+                // Clear tokens on refresh failure (refresh token likely expired)
+                tokenStorage.clearTokens()
+                null
+            }
+            is AuthResult.Loading -> null
+        }
+    }
+    
+    /**
+     * Execute an API call with automatic token refresh on Unauthorized errors.
+     */
+    private suspend fun <T> withTokenRefresh(
+        apiCall: suspend (String) -> JournalResult<T>
+    ): JournalResult<T> {
+        val accessToken = getAccessToken()
+            ?: return JournalResult.Error(JournalError.Unauthorized)
+        
+        return when (val result = apiCall(accessToken)) {
+            is JournalResult.Error -> {
+                if (result.error == JournalError.Unauthorized) {
+                    // Try to refresh token and retry
+                    val newToken = tryRefreshToken()
+                    if (newToken != null) {
+                        Napier.d("Retrying API call with refreshed token", tag = "JournalRepository")
+                        apiCall(newToken)
+                    } else {
+                        result
+                    }
+                } else {
+                    result
+                }
+            }
+            else -> result
+        }
+    }
     
     override suspend fun createEntry(
         title: String?,
         body: String?,
         entryDate: LocalDate?
-    ): JournalResult<Journal> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.createEntry(accessToken, title, body, entryDate)) {
+    ): JournalResult<Journal> = withTokenRefresh { token ->
+        when (val result = apiService.createEntry(token, title, body, entryDate)) {
             is JournalResult.Success -> {
                 val journal = result.data.toDomain()
                 Napier.d("Journal entry created: ${journal.id}", tag = "JournalRepository")
@@ -37,11 +90,8 @@ class JournalRepositoryImpl(
         }
     }
     
-    override suspend fun getEntry(id: String): JournalResult<Journal> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.getEntry(accessToken, id)) {
+    override suspend fun getEntry(id: String): JournalResult<Journal> = withTokenRefresh { token ->
+        when (val result = apiService.getEntry(token, id)) {
             is JournalResult.Success -> {
                 JournalResult.Success(result.data.toDomain())
             }
@@ -50,11 +100,8 @@ class JournalRepositoryImpl(
         }
     }
     
-    override suspend fun listEntries(page: Int, size: Int): JournalResult<JournalPage> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.listEntries(accessToken, page, size)) {
+    override suspend fun listEntries(page: Int, size: Int): JournalResult<JournalPage> = withTokenRefresh { token ->
+        when (val result = apiService.listEntries(token, page, size)) {
             is JournalResult.Success -> {
                 val journalPage = JournalPage(
                     entries = result.data.entries.map { it.toDomain() },
@@ -75,11 +122,8 @@ class JournalRepositoryImpl(
     override suspend fun getEntriesByDateRange(
         startDate: LocalDate,
         endDate: LocalDate
-    ): JournalResult<List<JournalPreview>> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.getEntriesByDateRange(accessToken, startDate, endDate)) {
+    ): JournalResult<List<JournalPreview>> = withTokenRefresh { token ->
+        when (val result = apiService.getEntriesByDateRange(token, startDate, endDate)) {
             is JournalResult.Success -> {
                 JournalResult.Success(result.data.map { it.toDomain() })
             }
@@ -92,11 +136,8 @@ class JournalRepositoryImpl(
         id: String,
         body: String,
         expectedVersion: Long?
-    ): JournalResult<JournalBodyUpdate> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.updateBody(accessToken, id, body, expectedVersion)) {
+    ): JournalResult<JournalBodyUpdate> = withTokenRefresh { token ->
+        when (val result = apiService.updateBody(token, id, body, expectedVersion)) {
             is JournalResult.Success -> {
                 val update = JournalBodyUpdate(
                     id = result.data.id,
@@ -117,11 +158,8 @@ class JournalRepositoryImpl(
         title: String?,
         moodScore: Int?,
         expectedVersion: Long?
-    ): JournalResult<Journal> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.updateMetadata(accessToken, id, title, moodScore, expectedVersion)) {
+    ): JournalResult<Journal> = withTokenRefresh { token ->
+        when (val result = apiService.updateMetadata(token, id, title, moodScore, expectedVersion)) {
             is JournalResult.Success -> {
                 val journal = result.data.toDomain()
                 Napier.d("Journal metadata updated: $id", tag = "JournalRepository")
@@ -132,11 +170,8 @@ class JournalRepositoryImpl(
         }
     }
     
-    override suspend fun deleteEntry(id: String): JournalResult<Unit> {
-        val accessToken = getAccessToken()
-            ?: return JournalResult.Error(JournalError.Unauthorized)
-        
-        return when (val result = apiService.deleteEntry(accessToken, id)) {
+    override suspend fun deleteEntry(id: String): JournalResult<Unit> = withTokenRefresh { token ->
+        when (val result = apiService.deleteEntry(token, id)) {
             is JournalResult.Success -> {
                 Napier.d("Journal entry deleted: $id", tag = "JournalRepository")
                 JournalResult.Success(Unit)
