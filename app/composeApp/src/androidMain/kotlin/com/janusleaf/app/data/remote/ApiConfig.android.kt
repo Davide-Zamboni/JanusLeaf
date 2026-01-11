@@ -1,6 +1,10 @@
 package com.janusleaf.app.data.remote
 
 /**
- * Android emulator uses 10.0.2.2 to reach the host machine.
+ * Android platform base URL.
+ * - Production: Uses Render deployment URL
+ * - Development: 10.0.2.2 (emulator's special IP to reach host)
  */
-actual fun getPlatformBaseUrl(): String = "http://10.0.2.2:8080"
+actual fun getPlatformBaseUrl(): String = 
+    if (ApiConfig.USE_PRODUCTION) ApiConfig.PRODUCTION_BASE_URL 
+    else "http://10.0.2.2:8080"

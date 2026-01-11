@@ -1,9 +1,21 @@
 package com.janusleaf.app.data.remote
 
+import com.janusleaf.app.BuildConfig
+
 /**
  * API configuration for the JanusLeaf backend.
+ * 
+ * Environment is determined at BUILD TIME via Gradle:
+ *   Production: ./gradlew build -PuseProduction=true
+ *   Development: ./gradlew build (default)
  */
 object ApiConfig {
+    // Use build-time configuration
+    val USE_PRODUCTION: Boolean = BuildConfig.USE_PRODUCTION
+    
+    // Production URL (Render deployment)
+    const val PRODUCTION_BASE_URL = "https://janusleaf.onrender.com"
+    
     // Platform-specific base URLs are set via expect/actual
     // Default fallback for common code
     const val DEFAULT_BASE_URL = "http://localhost:8080"

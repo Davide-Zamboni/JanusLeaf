@@ -185,18 +185,65 @@ The app features a custom design system inspired by **2026 design trends**:
 
 ## 🔧 Configuration
 
-### API Base URL
+### Environment Setup (Development vs Production)
 
-For development, update the base URL in `ApiConfig.kt`:
+The app supports **build-time environment configuration** via Gradle flags:
+
+#### Production Build (Render deployment)
+
+```bash
+# Android
+./gradlew :composeApp:assembleDebug -PuseProduction=true
+./gradlew :composeApp:assembleRelease -PuseProduction=true
+
+# iOS - Build shared framework first
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 -PuseProduction=true
+./gradlew :composeApp:linkReleaseFrameworkIosArm64 -PuseProduction=true
+# Then build in Xcode
+```
+
+#### Development Build (local backend)
+
+```bash
+# Android (default - no flag needed)
+./gradlew :composeApp:assembleDebug
+
+# iOS
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+```
+
+### API Base URL Configuration
+
+Update your production URL in `composeApp/src/commonMain/kotlin/com/janusleaf/app/data/remote/ApiConfig.kt`:
 
 ```kotlin
 object ApiConfig {
-    // Android Emulator → 10.0.2.2
-    // iOS Simulator → localhost
-    // Physical device → Your machine's IP
-    const val BASE_URL = "http://10.0.2.2:8080"
+    // Production URL (Render)
+    const val PRODUCTION_BASE_URL = "https://janusleaf.onrender.com"
+    
+    // Development URLs (automatic per platform):
+    // - Android Emulator: 10.0.2.2:8080
+    // - iOS Simulator: localhost:8080
 }
 ```
+
+### How It Works
+
+| Flag | Environment | Backend URL |
+|------|-------------|-------------|
+| `-PuseProduction=true` | Production | Your Render URL (HTTPS) |
+| *(default)* | Development | localhost / 10.0.2.2 |
+
+The build will output which environment was configured:
+```
+🔧 BuildConfig generated: USE_PRODUCTION = true
+```
+
+### ⚠️ Notes for Production
+
+- **HTTPS Required**: Render uses HTTPS by default ✓
+- **Cold Starts**: Free Render instances spin down after inactivity (~30s wake-up time)
+- **No Trailing Slash**: Ensure your URL doesn't end with `/`
 
 ---
 
