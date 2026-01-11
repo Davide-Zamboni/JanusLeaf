@@ -301,12 +301,21 @@ class InspirationalQuoteService(
      */
     private fun parseQuoteResponse(content: String): QuoteGenerationResult? {
         return try {
-            // Clean up the response - remove any markdown code blocks if present
-            val cleanContent = content
-                .removePrefix("```json")
-                .removePrefix("```")
-                .removeSuffix("```")
-                .trim()
+            // Extract JSON from the response - handles various formats:
+            // - Raw JSON: {"quote": "...", "tags": [...]}
+            // - Markdown: ```json\n{"quote": "...", "tags": [...]}\n```
+            // - With prefix: :\n```json\n{"quote": "...", "tags": [...]}\n```
+            val jsonRegex = """\{[^{}]*"quote"\s*:\s*"[^"]*"[^{}]*"tags"\s*:\s*\[[^\]]*\][^{}]*\}""".toRegex()
+            val cleanContent = jsonRegex.find(content)?.value
+                ?: content
+                    .replace(Regex("^[^{]*"), "") // Remove everything before first {
+                    .replace(Regex("[^}]*$"), "") // Remove everything after last }
+                    .trim()
+            
+            if (cleanContent.isBlank()) {
+                logger.warn("Could not extract JSON from response: $content")
+                return null
+            }
             
             val result = objectMapper.readValue(cleanContent, QuoteGenerationResult::class.java)
             
