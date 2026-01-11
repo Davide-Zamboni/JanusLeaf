@@ -14,7 +14,6 @@ struct ContentView: View {
                 AuthView()
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
     }
 }
 

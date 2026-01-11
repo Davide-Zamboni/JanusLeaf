@@ -1,333 +1,130 @@
 import SwiftUI
 import Shared
 
-// MARK: - Main Tab View
+// MARK: - Main Tab View (Optimized & Minimal)
 
 @available(iOS 17.0, *)
 struct MainTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var journalManager: JournalManager
     
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Tab = .journal
     @State private var isCreatingEntry = false
-    @State private var navigateToEntry: String? = nil
-    @State private var isEditorPresented = false
+    @State private var newEntryId: String? = nil
+    
+    enum Tab: String {
+        case journal = "Journal"
+        case insights = "Insights"
+    }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Content
-            Group {
-                if selectedTab == 0 {
-                    JournalTabContent(
-                        navigateToEntry: $navigateToEntry,
-                        isEditorPresented: $isEditorPresented,
-                        isCreatingEntry: $isCreatingEntry,
-                        createNewEntry: createNewEntry
-                    )
-                } else {
-                    MoodInsightsView()
-                }
+        TabView(selection: $selectedTab) {
+            JournalTabView(
+                isCreatingEntry: $isCreatingEntry,
+                newEntryId: $newEntryId,
+                createEntry: createNewEntry
+            )
+            .tabItem {
+                Label("Journal", systemImage: "book.fill")
             }
+            .tag(Tab.journal)
             
-            // Custom floating tab bar (App Store style)
-            if !isEditorPresented {
-                floatingTabBar
-                    .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isEditorPresented)
-        .preferredColorScheme(.dark)
-    }
-    
-    // MARK: - Floating Tab Bar (Liquid Glass Style)
-    
-    private var floatingTabBar: some View {
-        HStack(spacing: 16) {
-            // Main tab bar pill with liquid glass effect
-            liquidGlassTabPill
-            
-            // Separate + button with liquid glass effect
-            liquidGlassAddButton
-        }
-    }
-    
-    private var liquidGlassTabPill: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<2) { index in
-                LiquidGlassTabItem(
-                    icon: index == 0 ? "book.fill" : "chart.line.uptrend.xyaxis",
-                    label: index == 0 ? "Journal" : "Insights",
-                    isSelected: selectedTab == index
-                ) {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                        selectedTab = index
-                    }
+            MoodInsightsView()
+                .tabItem {
+                    Label("Insights", systemImage: "chart.line.uptrend.xyaxis")
                 }
-            }
+                .tag(Tab.insights)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
-        .background {
-            // Layered liquid glass effect
-            ZStack {
-                // Deep blur layer
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-                
-                // Inner subtle gradient for depth
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.08),
-                                Color.white.opacity(0.02),
-                                Color.clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                
-                // Subtle edge highlight
-                Capsule()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.25),
-                                Color.white.opacity(0.08),
-                                Color.white.opacity(0.03)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 0.5
-                    )
-            }
-        }
-        .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
-        .shadow(color: Color.black.opacity(0.15), radius: 5, x: 0, y: 2)
+        .tint(.green)
     }
-    
-    private var liquidGlassAddButton: some View {
-        Button(action: createNewEntry) {
-            ZStack {
-                if isCreatingEntry {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.9)
-                } else {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.white, .white.opacity(0.85)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
-            }
-            .frame(width: 52, height: 52)
-            .background {
-                ZStack {
-                    // Deep blur layer
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
-                    
-                    // Inner subtle gradient
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.1),
-                                    Color.white.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    
-                    // Edge highlight
-                    Circle()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.3),
-                                    Color.white.opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.5
-                        )
-                }
-            }
-        }
-        .disabled(isCreatingEntry)
-        .scaleEffect(isCreatingEntry ? 0.92 : 1.0)
-        .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
-        .shadow(color: Color.black.opacity(0.15), radius: 4, x: 0, y: 2)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCreatingEntry)
-    }
-    
-    // MARK: - Create New Entry
     
     private func createNewEntry() {
         guard !isCreatingEntry else { return }
         
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-        
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         isCreatingEntry = true
-        selectedTab = 0
+        selectedTab = .journal
         
         journalManager.createEntry(
             title: nil,
             body: nil,
             entryDate: Date()
         ) { journal in
-            DispatchQueue.main.async {
-                isCreatingEntry = false
-                if let journal = journal {
-                    navigateToEntry = journal.id
-                }
+            isCreatingEntry = false
+            if let journal {
+                newEntryId = journal.id
             }
         }
     }
 }
 
-// MARK: - Liquid Glass Tab Item
-
-struct LiquidGlassTabItem: View {
-    let icon: String
-    let label: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    // Accent color for the app
-    private let accentColor = Color(red: 0.25, green: 0.78, blue: 0.55) // Refined green
-    
-    var body: some View {
-        Button(action: {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            action()
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                
-                Text(label)
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundStyle(isSelected ? accentColor : .white.opacity(0.55))
-            .padding(.horizontal, isSelected ? 18 : 14)
-            .padding(.vertical, 12)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accentColor.opacity(0.25),
-                                    accentColor.opacity(0.15)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    accentColor.opacity(0.3),
-                                    lineWidth: 0.5
-                                )
-                        )
-                }
-            }
-            .contentShape(Capsule())
-        }
-        .buttonStyle(LiquidGlassButtonStyle())
-    }
-}
-
-// MARK: - Liquid Glass Button Style
-
-struct LiquidGlassButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Journal Tab Content
+// MARK: - Journal Tab View
 
 @available(iOS 17.0, *)
-struct JournalTabContent: View {
+struct JournalTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var journalManager: JournalManager
     @StateObject private var inspirationManager = InspirationManager()
     
-    @Binding var navigateToEntry: String?
-    @Binding var isEditorPresented: Bool
     @Binding var isCreatingEntry: Bool
-    let createNewEntry: () -> Void
+    @Binding var newEntryId: String?
+    let createEntry: () -> Void
     
     @State private var selectedEntryId: String? = nil
-    @State private var animateItems = false
-    @State private var moodPollingTimer: Timer? = nil
-    @State private var inspirationPollingTimer: Timer? = nil
-    @State private var showLogoutConfirmation = false
-    
-    private var isNavigating: Bool {
-        selectedEntryId != nil || navigateToEntry != nil
-    }
+    @State private var showLogout = false
+    @State private var pollTimer: Timer? = nil
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                JournalBackground()
-                
-                VStack(spacing: 0) {
-                    headerView
-                    
-                    if journalManager.isLoading && journalManager.entries.isEmpty {
-                        loadingView
-                    } else if journalManager.entries.isEmpty {
-                        emptyStateView
-                    } else {
-                        journalListView
+            Group {
+                if journalManager.isLoading && journalManager.entries.isEmpty {
+                    loadingView
+                } else if journalManager.entries.isEmpty {
+                    emptyView
+                } else {
+                    listView
+                }
+            }
+            .navigationTitle(headerTitle)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button {
+                            createEntry()
+                        } label: {
+                            if isCreatingEntry {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "plus")
+                            }
+                        }
+                        .disabled(isCreatingEntry)
+                        
+                        Button {
+                            showLogout = true
+                        } label: {
+                            Image(systemName: "person.circle")
+                        }
                     }
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .toolbar(.hidden, for: .tabBar)
             .navigationDestination(isPresented: Binding(
-                get: { isNavigating },
-                set: { 
-                    if !$0 { 
-                        selectedEntryId = nil
-                        navigateToEntry = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            journalManager.refresh()
-                        }
-                    } 
-                }
+                get: { selectedEntryId != nil || newEntryId != nil },
+                set: { if !$0 { 
+                    selectedEntryId = nil
+                    newEntryId = nil
+                    journalManager.refresh()
+                }}
             )) {
-                if let entryId = navigateToEntry ?? selectedEntryId {
-                    JournalEditorView(entryId: entryId)
+                if let id = newEntryId ?? selectedEntryId {
+                    JournalEditorView(entryId: id)
                         .environmentObject(journalManager)
                 }
             }
-            .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
+            .confirmationDialog("Sign Out", isPresented: $showLogout) {
                 Button("Sign Out", role: .destructive) {
                     authManager.logout()
                 }
-                Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Are you sure you want to sign out?")
             }
@@ -335,215 +132,100 @@ struct JournalTabContent: View {
         .onAppear {
             journalManager.loadEntries()
             inspirationManager.fetchQuote()
-            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
-                animateItems = true
-            }
-            startMoodPolling()
-            startInspirationPolling()
+            startPolling()
         }
         .onDisappear {
-            stopMoodPolling()
-            stopInspirationPolling()
+            stopPolling()
         }
-        .onChange(of: navigateToEntry) { _, newValue in
+        .onChange(of: newEntryId) { _, newValue in
             if newValue != nil {
                 selectedEntryId = newValue
             }
         }
-        .onChange(of: isNavigating) { _, newValue in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isEditorPresented = newValue
-            }
-        }
     }
     
-    // MARK: - Header View
+    // MARK: - List View
     
-    private var headerView: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(headerTitle)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text(formattedDate)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-            
-            Spacer()
-            
-            Button(action: { showLogoutConfirmation = true }) {
-                ZStack {
-                    // Liquid glass background
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
-                    
-                    // Inner gradient for depth
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.1),
-                                    Color.white.opacity(0.02)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    
-                    // Edge highlight
-                    Circle()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.25),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.5
-                        )
-                    
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.white.opacity(0.9), .white.opacity(0.7)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+    private var listView: some View {
+        List {
+            // Inspiration section
+            if inspirationManager.quote != nil || inspirationManager.isNotFound {
+                Section {
+                    QuoteCard(inspirationManager: inspirationManager)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                 }
-                .frame(width: 44, height: 44)
-                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 4)
             }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 60)
-        .padding(.bottom, 8)
-        .opacity(animateItems ? 1 : 0)
-        .offset(y: animateItems ? 0 : -20)
-    }
-    
-    // MARK: - Journal List
-    
-    private var journalListView: some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 16) {
-                InspirationalQuoteView(inspirationManager: inspirationManager)
-                    .padding(.top, 4)
-                    .opacity(animateItems ? 1 : 0)
-                    .offset(y: animateItems ? 0 : 20)
-                    .animation(
-                        .spring(response: 0.6, dampingFraction: 0.8).delay(0.1),
-                        value: animateItems
-                    )
-                
-                ForEach(Array(journalManager.entries.enumerated()), id: \.element.id) { index, entry in
-                    JournalEntryCard(entry: entry) {
-                        selectedEntryId = entry.id
-                    }
-                    .opacity(animateItems ? 1 : 0)
-                    .offset(y: animateItems ? 0 : 30)
-                    .animation(
-                        .spring(response: 0.5, dampingFraction: 0.8)
-                        .delay(0.2 + Double(index) * 0.05),
-                        value: animateItems
-                    )
+            
+            // Entries
+            Section {
+                ForEach(journalManager.entries, id: \.id) { entry in
+                    JournalRow(entry: entry)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedEntryId = entry.id
+                        }
                 }
                 
                 if journalManager.hasMore {
-                    loadMoreIndicator
+                    Button {
+                        journalManager.loadMoreEntries()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if journalManager.isLoading {
+                                ProgressView()
+                            } else {
+                                Text("Load More")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(journalManager.isLoading)
                 }
+            } header: {
+                Text(formattedDate)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 140)
         }
+        .listStyle(.insetGrouped)
         .refreshable {
             journalManager.refresh()
             inspirationManager.refresh()
         }
     }
     
-    // MARK: - Empty State
-    
-    private var emptyStateView: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                InspirationPendingView()
-                    .padding(.top, 20)
-                
-                VStack(spacing: 32) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [Color.green.opacity(0.2), Color.clear],
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: 80
-                                )
-                            )
-                            .frame(width: 160, height: 160)
-                        
-                        Text("📔")
-                            .font(.system(size: 72))
-                    }
-                    
-                    VStack(spacing: 12) {
-                        Text("Start Your Journey")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Text("Your journal is empty.\nTap the + button to create your first entry.")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.6))
-                            .multilineTextAlignment(.center)
-                    }
-                }
-                .padding(.top, 40)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 140)
-        }
-    }
-    
     // MARK: - Loading View
     
     private var loadingView: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        VStack(spacing: 16) {
             ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(1.5)
-            Text("Loading your journal...")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.6))
-            Spacer()
+            Text("Loading journal...")
+                .foregroundStyle(.secondary)
         }
     }
     
-    // MARK: - Load More
+    // MARK: - Empty View
     
-    private var loadMoreIndicator: some View {
-        Button(action: { journalManager.loadMoreEntries() }) {
-            HStack(spacing: 8) {
-                if journalManager.isLoading {
+    private var emptyView: some View {
+        ContentUnavailableView {
+            Label("No Entries", systemImage: "book.closed")
+        } description: {
+            Text("Start your journaling journey")
+        } actions: {
+            Button {
+                createEntry()
+            } label: {
+                if isCreatingEntry {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text("Load More")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                    Text("Create Entry")
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .disabled(isCreatingEntry)
         }
-        .disabled(journalManager.isLoading)
     }
     
     // MARK: - Helpers
@@ -556,44 +238,182 @@ struct JournalTabContent: View {
     }
     
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d"
-        return formatter.string(from: Date())
+        Date().formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
     
-    // MARK: - Polling
+    // MARK: - Polling (reduced frequency)
     
-    private func startMoodPolling() {
-        moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak journalManager] _ in
+    private func startPolling() {
+        // Poll every 15 seconds instead of 5
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { _ in
             Task { @MainActor in
-                guard let journalManager = journalManager else { return }
-                let hasPendingMoods = journalManager.entries.contains { $0.moodScore == nil }
-                if hasPendingMoods {
+                if journalManager.entries.contains(where: { $0.moodScore == nil }) {
                     journalManager.refresh()
                 }
-            }
-        }
-    }
-    
-    private func stopMoodPolling() {
-        moodPollingTimer?.invalidate()
-        moodPollingTimer = nil
-    }
-    
-    private func startInspirationPolling() {
-        inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak inspirationManager] _ in
-            Task { @MainActor in
-                guard let inspirationManager = inspirationManager else { return }
-                if inspirationManager.isNotFound || (inspirationManager.quote == nil && !inspirationManager.isLoading) {
+                if inspirationManager.isNotFound {
                     inspirationManager.refresh()
                 }
             }
         }
     }
     
-    private func stopInspirationPolling() {
-        inspirationPollingTimer?.invalidate()
-        inspirationPollingTimer = nil
+    private func stopPolling() {
+        pollTimer?.invalidate()
+        pollTimer = nil
+    }
+}
+
+// MARK: - Journal Row
+
+struct JournalRow: View {
+    let entry: JournalPreview
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                
+                if !entry.bodyPreview.isEmpty {
+                    Text(cleanPreview(entry.bodyPreview))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                
+                Text(formatDate(entry.entryDate))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            
+            Spacer()
+            
+            MoodIndicator(score: entry.moodScore.map { Int($0.intValue) })
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func cleanPreview(_ text: String) -> String {
+        // Remove markdown formatting for cleaner preview
+        text.replacingOccurrences(of: "~~", with: "")
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "*", with: "")
+    }
+    
+    private func formatDate(_ date: Kotlinx_datetimeLocalDate) -> String {
+        let components = DateComponents(
+            year: Int(date.year),
+            month: Int(date.monthNumber),
+            day: Int(date.dayOfMonth)
+        )
+        if let swiftDate = Calendar.current.date(from: components) {
+            return swiftDate.formatted(.dateTime.month(.abbreviated).day().year())
+        }
+        return "\(date.month) \(date.dayOfMonth)"
+    }
+}
+
+// MARK: - Mood Indicator
+
+struct MoodIndicator: View {
+    let score: Int?
+    
+    var body: some View {
+        if let score {
+            Text(emoji(for: score))
+                .font(.title2)
+        } else {
+            // Simple loading indicator
+            Image(systemName: "sparkles")
+                .foregroundStyle(.mint)
+                .symbolEffect(.pulse)
+        }
+    }
+    
+    private func emoji(for score: Int) -> String {
+        switch score {
+        case 1...2: return "😢"
+        case 3...4: return "😔"
+        case 5...6: return "😐"
+        case 7...8: return "😊"
+        case 9...10: return "😄"
+        default: return "😶"
+        }
+    }
+}
+
+// MARK: - Quote Card
+
+struct QuoteCard: View {
+    @ObservedObject var inspirationManager: InspirationManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if inspirationManager.isNotFound {
+                pendingView
+            } else if let quote = inspirationManager.quote {
+                quoteView(quote)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+    
+    private func quoteView(_ quote: InspirationalQuote) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.mint)
+                Text("Daily Inspiration")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Text("\"\(quote.quote)\"")
+                .font(.callout)
+                .italic()
+            
+            // Tags
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(quote.tags.prefix(4)), id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.mint.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            
+            Text(inspirationManager.formattedGeneratedDate())
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+    
+    private var pendingView: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "flame")
+                .font(.title2)
+                .foregroundStyle(.orange)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Inspiration brewing...")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text("Keep journaling to unlock personalized quotes")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Auth View (Optimized & Minimal)
+
 struct AuthView: View {
     @EnvironmentObject var authManager: AuthManager
     
@@ -9,262 +11,187 @@ struct AuthView: View {
     @State private var confirmPassword = ""
     @State private var isRegistering = false
     @State private var showPassword = false
-    @State private var showConfirmPassword = false
     
-    // Animation states
-    @State private var animateGradient = false
-    @State private var formAppeared = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field: Hashable {
+        case email, username, password, confirmPassword
+    }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Animated gradient background
-                AnimatedGradientBackground()
-                
-                // Floating orbs for depth
-                FloatingOrbs()
-                
-                ScrollView {
-                    VStack(spacing: 0) {
-                        Spacer()
-                            .frame(height: geometry.safeAreaInsets.top + 60)
-                        
-                        // Header
-                        headerSection
-                            .opacity(formAppeared ? 1 : 0)
-                            .offset(y: formAppeared ? 0 : -30)
-                        
-                        Spacer()
-                            .frame(height: 40)
-                        
-                        // Glass card with form
-                        glassFormCard
-                            .opacity(formAppeared ? 1 : 0)
-                            .offset(y: formAppeared ? 0 : 50)
-                        
-                        Spacer()
-                            .frame(height: 24)
-                        
-                        // Toggle auth mode
-                        authModeToggle
-                            .opacity(formAppeared ? 1 : 0)
-                        
-                        Spacer()
-                            .frame(height: 40)
-                    }
-                    .padding(.horizontal, 24)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 32) {
+                    // Logo
+                    headerSection
+                        .padding(.top, 40)
+                    
+                    // Form
+                    formSection
+                    
+                    // Toggle
+                    toggleSection
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
             }
-        }
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
-                formAppeared = true
-            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemBackground))
+            .navigationBarHidden(true)
         }
     }
     
-    // MARK: - Header Section
+    // MARK: - Header
+    
     private var headerSection: some View {
-        VStack(spacing: 16) {
-            // Leaf emoji with glow
+        VStack(spacing: 12) {
             Text("🍃")
-                .font(.system(size: 72))
-                .shadow(color: .green.opacity(0.5), radius: 20, x: 0, y: 0)
+                .font(.system(size: 56))
             
             Text("JanusLeaf")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.white, .white.opacity(0.8)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .font(.system(size: 32, weight: .bold, design: .rounded))
             
-            Text(isRegistering ? "Begin your mindful journey" : "Welcome back to your journey")
-                .font(.system(size: 17, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.7))
-                .animation(.easeInOut(duration: 0.3), value: isRegistering)
+            Text(isRegistering ? "Start your journey" : "Welcome back")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
     }
     
-    // MARK: - Glass Form Card
-    private var glassFormCard: some View {
+    // MARK: - Form
+    
+    private var formSection: some View {
         VStack(spacing: 16) {
-            // Error message
+            // Error
             if let error = authManager.errorMessage {
-                errorBanner(message: error)
+                ErrorBanner(message: error) {
+                    authManager.clearError()
+                }
             }
             
-            // Email field with validation
-            VStack(alignment: .leading, spacing: 6) {
-                GlassTextField(
+            // Email
+            VStack(alignment: .leading, spacing: 4) {
+                MinimalTextField(
                     text: $email,
                     placeholder: "Email",
-                    icon: "envelope.fill",
+                    icon: "envelope",
                     keyboardType: .emailAddress
                 )
+                .focused($focusedField, equals: .email)
+                .textContentType(.emailAddress)
+                .autocapitalization(.none)
                 
                 if !email.isEmpty && !authManager.isValidEmail(email) {
-                    ValidationHint(message: "Enter a valid email address")
+                    HintText("Enter a valid email")
                 }
             }
             
-            // Username field (register only)
+            // Username (register)
             if isRegistering {
-                VStack(alignment: .leading, spacing: 6) {
-                    GlassTextField(
+                VStack(alignment: .leading, spacing: 4) {
+                    MinimalTextField(
                         text: $username,
                         placeholder: "Username",
-                        icon: "person.fill"
+                        icon: "person"
                     )
+                    .focused($focusedField, equals: .username)
+                    .textContentType(.username)
                     
                     if !username.isEmpty && !authManager.isValidUsername(username) {
-                        ValidationHint(message: "Username must be 2-50 characters")
+                        HintText("2-50 characters required")
                     }
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .top)),
-                    removal: .opacity.combined(with: .move(edge: .top))
-                ))
             }
             
-            // Password field with validation
-            VStack(alignment: .leading, spacing: 6) {
-                GlassTextField(
+            // Password
+            VStack(alignment: .leading, spacing: 4) {
+                MinimalSecureField(
                     text: $password,
                     placeholder: "Password",
-                    icon: "lock.fill",
-                    isSecure: !showPassword,
-                    trailingIcon: showPassword ? "eye.slash.fill" : "eye.fill",
-                    trailingAction: { showPassword.toggle() }
+                    showPassword: $showPassword
                 )
+                .focused($focusedField, equals: .password)
+                .textContentType(isRegistering ? .newPassword : .password)
                 
                 if !password.isEmpty && !authManager.isValidPassword(password) {
-                    ValidationHint(message: "Password must be at least 8 characters")
+                    HintText("At least 8 characters")
                 }
             }
             
-            // Confirm password (register only)
+            // Confirm password (register)
             if isRegistering {
-                VStack(alignment: .leading, spacing: 6) {
-                    GlassTextField(
+                VStack(alignment: .leading, spacing: 4) {
+                    MinimalSecureField(
                         text: $confirmPassword,
                         placeholder: "Confirm Password",
-                        icon: "lock.fill",
-                        isSecure: !showConfirmPassword,
-                        trailingIcon: showConfirmPassword ? "eye.slash.fill" : "eye.fill",
-                        trailingAction: { showConfirmPassword.toggle() }
+                        showPassword: $showPassword
                     )
+                    .focused($focusedField, equals: .confirmPassword)
+                    .textContentType(.newPassword)
                     
                     if !confirmPassword.isEmpty && password != confirmPassword {
-                        ValidationHint(message: "Passwords do not match")
+                        HintText("Passwords don't match")
                     }
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .top)),
-                    removal: .opacity.combined(with: .move(edge: .top))
-                ))
             }
             
-            Spacer().frame(height: 8)
-            
-            // Submit button
-            GlassButton(
-                title: isRegistering ? "Create Account" : "Sign In",
-                isLoading: authManager.isLoading,
-                isEnabled: isFormValid,
-                action: submit
-            )
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 32)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 32)
-                        .stroke(
-                            LinearGradient(
-                                colors: [.white.opacity(0.3), .white.opacity(0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-        .shadow(color: .black.opacity(0.2), radius: 40, x: 0, y: 20)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isRegistering)
-    }
-    
-    // MARK: - Error Banner
-    private func errorBanner(message: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-            
-            Text(message)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white)
-            
-            Spacer()
-            
-            Button(action: { authManager.clearError() }) {
-                Image(systemName: "xmark")
-                    .foregroundColor(.white.opacity(0.7))
+            // Submit
+            Button(action: submit) {
+                Group {
+                    if authManager.isLoading {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text(isRegistering ? "Create Account" : "Sign In")
+                            .fontWeight(.semibold)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
             }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .disabled(!isFormValid || authManager.isLoading)
+            .padding(.top, 8)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.red.opacity(0.3))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.red.opacity(0.5), lineWidth: 1)
-                )
-        )
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
     
-    // MARK: - Auth Mode Toggle
-    private var authModeToggle: some View {
+    // MARK: - Toggle
+    
+    private var toggleSection: some View {
         HStack(spacing: 4) {
-            Text(isRegistering ? "Already have an account?" : "Don't have an account?")
-                .font(.system(size: 15))
-                .foregroundColor(.white.opacity(0.7))
+            Text(isRegistering ? "Have an account?" : "Need an account?")
+                .foregroundStyle(.secondary)
             
-            Button(action: {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            Button(isRegistering ? "Sign In" : "Sign Up") {
+                withAnimation(.easeInOut(duration: 0.2)) {
                     isRegistering.toggle()
                     authManager.clearError()
                     password = ""
                     confirmPassword = ""
                 }
-            }) {
-                Text(isRegistering ? "Sign In" : "Sign Up")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
             }
+            .fontWeight(.medium)
         }
+        .font(.subheadline)
     }
     
     // MARK: - Validation
+    
     private var isFormValid: Bool {
         let emailValid = authManager.isValidEmail(email)
         let passwordValid = authManager.isValidPassword(password)
         
         if isRegistering {
-            let usernameValid = authManager.isValidUsername(username)
-            let passwordsMatch = password == confirmPassword
-            return emailValid && passwordValid && usernameValid && passwordsMatch && !confirmPassword.isEmpty
+            return emailValid && passwordValid &&
+                   authManager.isValidUsername(username) &&
+                   password == confirmPassword &&
+                   !confirmPassword.isEmpty
         }
-        
         return emailValid && passwordValid
     }
     
-    // MARK: - Submit
     private func submit() {
+        focusedField = nil
         if isRegistering {
             authManager.register(email: email, username: username, password: password)
         } else {
@@ -273,102 +200,108 @@ struct AuthView: View {
     }
 }
 
-// MARK: - Animated Gradient Background
-struct AnimatedGradientBackground: View {
-    @State private var animateGradient = false
+// MARK: - Minimal Text Field
+
+struct MinimalTextField: View {
+    @Binding var text: String
+    let placeholder: String
+    var icon: String? = nil
+    var keyboardType: UIKeyboardType = .default
     
     var body: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.1, green: 0.2, blue: 0.15),
-                Color(red: 0.05, green: 0.15, blue: 0.1),
-                Color(red: 0.15, green: 0.1, blue: 0.2),
-                Color(red: 0.1, green: 0.1, blue: 0.15)
-            ],
-            startPoint: animateGradient ? .topLeading : .bottomTrailing,
-            endPoint: animateGradient ? .bottomTrailing : .topLeading
-        )
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
-                animateGradient.toggle()
+        HStack(spacing: 12) {
+            if let icon {
+                Image(systemName: icon)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
             }
+            
+            TextField(placeholder, text: $text)
+                .keyboardType(keyboardType)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
-// MARK: - Floating Orbs
-struct FloatingOrbs: View {
-    @State private var animate = false
+// MARK: - Minimal Secure Field
+
+struct MinimalSecureField: View {
+    @Binding var text: String
+    let placeholder: String
+    @Binding var showPassword: Bool
     
     var body: some View {
-        ZStack {
-            // Top-left orb
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.green.opacity(0.3), Color.clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 150
-                    )
-                )
-                .frame(width: 300, height: 300)
-                .offset(x: -100, y: animate ? -50 : -80)
-                .blur(radius: 60)
+        HStack(spacing: 12) {
+            Image(systemName: "lock")
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
             
-            // Top-right orb
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.purple.opacity(0.25), Color.clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 120
-                    )
-                )
-                .frame(width: 250, height: 250)
-                .offset(x: 120, y: animate ? 100 : 130)
-                .blur(radius: 50)
+            Group {
+                if showPassword {
+                    TextField(placeholder, text: $text)
+                } else {
+                    SecureField(placeholder, text: $text)
+                }
+            }
             
-            // Bottom orb
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.orange.opacity(0.2), Color.clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 100
-                    )
-                )
-                .frame(width: 200, height: 200)
-                .offset(x: -50, y: animate ? 350 : 320)
-                .blur(radius: 40)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
-                animate = true
+            Button {
+                showPassword.toggle()
+            } label: {
+                Image(systemName: showPassword ? "eye.slash" : "eye")
+                    .foregroundStyle(.secondary)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
-// MARK: - Validation Hint
-struct ValidationHint: View {
+// MARK: - Error Banner
+
+struct ErrorBanner: View {
     let message: String
+    let dismiss: () -> Void
     
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "info.circle.fill")
-                .font(.system(size: 12))
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
             
             Text(message)
-                .font(.system(size: 13, weight: .medium))
+                .font(.subheadline)
+            
+            Spacer()
+            
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .foregroundStyle(.secondary)
+            }
         }
-        .foregroundColor(.orange.opacity(0.9))
-        .padding(.leading, 4)
-        .transition(.opacity.combined(with: .move(edge: .top)))
-        .animation(.easeInOut(duration: 0.2), value: message)
+        .padding(14)
+        .background(Color.red.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - Hint Text
+
+struct HintText: View {
+    let text: String
+    
+    init(_ text: String) {
+        self.text = text
+    }
+    
+    var body: some View {
+        Label(text, systemImage: "info.circle")
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .padding(.leading, 4)
     }
 }
 

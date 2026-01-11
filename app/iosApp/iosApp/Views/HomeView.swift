@@ -1,59 +1,41 @@
 import SwiftUI
 
+// MARK: - Home View (Placeholder - not actively used)
+
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
-    @State private var showLogoutConfirmation = false
+    @State private var showLogout = false
     
     var body: some View {
-        ZStack {
-            // Background
-            AnimatedGradientBackground()
-            
-            VStack(spacing: 32) {
+        NavigationStack {
+            VStack(spacing: 24) {
                 Spacer()
                 
-                // Welcome section
-                VStack(spacing: 16) {
-                    Text("🍃")
-                        .font(.system(size: 80))
-                        .shadow(color: .green.opacity(0.5), radius: 30, x: 0, y: 0)
-                    
-                    Text("Welcome to JanusLeaf!")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    
-                    if let email = authManager.currentUserEmail {
-                        Text(email)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    
-                    Text("You're successfully logged in.\nJournal features coming soon...")
-                        .font(.system(size: 17))
-                        .foregroundColor(.white.opacity(0.6))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
+                Text("🍃")
+                    .font(.system(size: 64))
+                
+                Text("Welcome to JanusLeaf!")
+                    .font(.title.bold())
+                
+                if let email = authManager.currentUserEmail {
+                    Text(email)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
-                // Logout button
-                GlassSecondaryButton(title: "Sign Out") {
-                    showLogoutConfirmation = true
+                Button("Sign Out") {
+                    showLogout = true
                 }
-                .padding(.horizontal, 60)
-                .padding(.bottom, 40)
+                .buttonStyle(.bordered)
             }
             .padding()
-        }
-        .ignoresSafeArea()
-        .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
-            Button("Sign Out", role: .destructive) {
-                authManager.logout()
+            .navigationTitle("Home")
+            .confirmationDialog("Sign Out", isPresented: $showLogout) {
+                Button("Sign Out", role: .destructive) {
+                    authManager.logout()
+                }
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to sign out?")
         }
     }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 import Shared
 
+// MARK: - Journal Editor View (Optimized & Minimal)
+
 @available(iOS 17.0, *)
 struct JournalEditorView: View {
     @EnvironmentObject var journalManager: JournalManager
@@ -12,250 +14,179 @@ struct JournalEditorView: View {
     @State private var bodyText: String = ""
     @State private var moodScore: Int? = nil
     @State private var entryDate: Kotlinx_datetimeLocalDate? = nil
-    @State private var version: Int64 = 0
     
-    @State private var showDeleteConfirmation = false
-    @State private var hasUnsavedBodyChanges = false
     @State private var originalTitle: String = ""
     @State private var isLoading = true
+    @State private var showDelete = false
+    @State private var hasChanges = false
     
-    // Error tracking
-    @State private var consecutiveFailures = 0
-    @State private var showErrorBanner = false
-    private let failureThreshold = 3
+    @FocusState private var focusedField: Field?
     
-    // Strikethrough visibility toggle
-    @State private var showStrikethrough = true
-    
-    @FocusState private var isEditorFocused: Bool
-    @FocusState private var isTitleFocused: Bool
+    enum Field { case title, body }
     
     var body: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: 0) {
-                // Custom navigation bar
-                customNavBar
-                
-                // Content
-                if isLoading {
-                    loadingContent
-                } else {
-                    editorContent
-                }
-            }
-            
-            // Error banner overlay
-            if showErrorBanner {
-                errorBanner
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(100)
-            }
-        }
-        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .onAppear { loadEntry() }
-        .onDisappear { journalManager.clearCurrentEntry() }
-        .confirmationDialog("Delete Entry", isPresented: $showDeleteConfirmation) {
-            Button("Delete", role: .destructive) { deleteEntry() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This entry will be permanently deleted.")
-        }
-        .onChange(of: journalManager.errorMessage) { _, error in
-            if error != nil {
-                handleSaveError()
-                journalManager.clearError()
+        Group {
+            if isLoading {
+                loadingView
             } else {
-                // Success - reset failure count
-                consecutiveFailures = 0
+                editorView
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showErrorBanner)
-    }
-    
-    // MARK: - Error Banner
-    
-    private var errorBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14))
-                .foregroundColor(.orange)
-            
-            Text("Having trouble saving. Check your connection.")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.9))
-            
-            Spacer()
-            
-            Button(action: { 
-                withAnimation { showErrorBanner = false }
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(red: 0.2, green: 0.15, blue: 0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .padding(.horizontal, 16)
-        .padding(.top, 100) // Below nav bar
-    }
-    
-    private func handleSaveError() {
-        consecutiveFailures += 1
-        
-        // Only show banner after multiple failures
-        if consecutiveFailures >= failureThreshold && !showErrorBanner {
-            withAnimation {
-                showErrorBanner = true
-            }
-            
-            // Auto-hide after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                withAnimation {
-                    showErrorBanner = false
-                }
-            }
-        }
-    }
-    
-    // MARK: - Custom Navigation Bar
-    
-    private var customNavBar: some View {
-        VStack(spacing: 4) {
-            HStack {
-                Button(action: handleBack) {
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    handleBack()
+                } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
                         Text("Back")
-                            .font(.system(size: 16))
                     }
-                    .foregroundColor(.white.opacity(0.8))
                 }
-                
-                Spacer()
-                
-                // Strikethrough visibility toggle
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        showStrikethrough.toggle()
-                    }
-                }) {
-                    Image(systemName: showStrikethrough ? "eye" : "eye.slash")
-                        .font(.system(size: 18))
-                        .foregroundColor(showStrikethrough ? .white.opacity(0.7) : .orange.opacity(0.8))
+            }
+            
+            ToolbarItem(placement: .principal) {
+                if let date = entryDate {
+                    Text(formatDate(date))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.trailing, 8)
-                
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button(role: .destructive) { showDeleteConfirmation = true } label: {
+                    Button(role: .destructive) {
+                        showDelete = true
+                    } label: {
                         Label("Delete", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white.opacity(0.7))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            
-            // Date row
-            HStack {
-                Spacer()
-                
-                if let date = entryDate {
-                    Text(formatDate(date))
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.4))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
         }
-        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+            }
+        }
+        .confirmationDialog("Delete Entry", isPresented: $showDelete) {
+            Button("Delete", role: .destructive) {
+                deleteEntry()
+            }
+        } message: {
+            Text("This entry will be permanently deleted.")
+        }
+        .onAppear {
+            loadEntry()
+        }
+        .onDisappear {
+            journalManager.clearCurrentEntry()
+        }
     }
     
-    // MARK: - Editor Content
+    // MARK: - Loading View
     
-    private var editorContent: some View {
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+            Text("Loading...")
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    // MARK: - Editor View
+    
+    private var editorView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Title - editable TextField
-                TextField("Enter title...", text: $title)
+            VStack(alignment: .leading, spacing: 20) {
+                // Title
+                TextField("Title", text: $title)
                     .font(.title.bold())
-                    .foregroundColor(.white)
-                    .focused($isTitleFocused)
+                    .focused($focusedField, equals: .title)
                     .onSubmit {
-                        saveTitle()
+                        focusedField = .body
                     }
-                    .onChange(of: isTitleFocused) { _, focused in
-                        // Save when losing focus
-                        if !focused && !title.isEmpty {
-                            saveTitle()
+                    .onChange(of: title) { _, newValue in
+                        if newValue != originalTitle {
+                            hasChanges = true
                         }
                     }
                 
-                // Markdown Body Text Editor
-                MarkdownTextEditor(
-                    text: $bodyText,
-                    placeholder: "Start writing...",
-                    isFocused: $isEditorFocused,
-                    showStrikethrough: showStrikethrough
-                ) { newValue in
-                    hasUnsavedBodyChanges = true
-                    journalManager.updateBody(newValue, for: entryId)
+                // Mood indicator
+                if let score = moodScore {
+                    HStack(spacing: 6) {
+                        Text(moodEmoji(for: score))
+                        Text("Mood: \(score)/10")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(.mint)
+                        Text("Analyzing mood...")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Divider()
+                
+                // Body
+                TextEditor(text: $bodyText)
+                    .font(.body)
+                    .focused($focusedField, equals: .body)
+                    .frame(minHeight: 300)
+                    .scrollContentBackground(.hidden)
+                    .onChange(of: bodyText) { _, newValue in
+                        hasChanges = true
+                        journalManager.updateBody(newValue, for: entryId)
+                    }
+                
+                // Save status
+                if journalManager.isSaving {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Saving...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let lastSaved = journalManager.lastSavedAt {
+                    Text("Saved \(lastSaved.formatted(.relative(presentation: .named)))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
-            .padding(16)
+            .padding()
         }
-        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
-    }
-    
-    // MARK: - Loading Content
-    
-    private var loadingContent: some View {
-        VStack {
-            Spacer()
-            ProgressView()
-                .tint(.white)
-                .scaleEffect(1.5)
-            Text("Loading...")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
-                .padding(.top, 16)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
+        .background(Color(.systemBackground))
     }
     
     // MARK: - Actions
     
     private func handleBack() {
-        let hasTitleChanges = title != originalTitle && !title.isEmpty
+        let titleChanged = title != originalTitle && !title.isEmpty
         
-        // Save title first if changed, then handle body changes
-        if hasTitleChanges {
+        if titleChanged {
             journalManager.updateTitle(title, for: entryId) { _ in
-                if hasUnsavedBodyChanges {
-                    journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+                if hasChanges {
+                    journalManager.forceSave(entryId: entryId) { _ in
+                        dismiss()
+                    }
                 } else {
                     dismiss()
                 }
             }
-        } else if hasUnsavedBodyChanges {
-            journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+        } else if hasChanges {
+            journalManager.forceSave(entryId: entryId) { _ in
+                dismiss()
+            }
         } else {
             dismiss()
         }
@@ -263,34 +194,50 @@ struct JournalEditorView: View {
     
     private func loadEntry() {
         journalManager.getEntry(id: entryId) { journal in
-            guard let journal = journal else { return }
-            self.title = journal.title
-            self.originalTitle = journal.title
-            self.bodyText = journal.body
-            self.moodScore = journal.moodScore.map { Int($0.intValue) }
-            self.entryDate = journal.entryDate
-            self.version = journal.version
-            self.isLoading = false
-        }
-    }
-    
-    private func saveTitle() {
-        guard !title.isEmpty, title != originalTitle else { return }
-        journalManager.updateTitle(title, for: entryId) { success in
-            if success {
-                self.originalTitle = self.title
-            }
+            guard let journal else { return }
+            title = journal.title
+            originalTitle = journal.title
+            bodyText = cleanMarkdown(journal.body)
+            moodScore = journal.moodScore.map { Int($0.intValue) }
+            entryDate = journal.entryDate
+            isLoading = false
         }
     }
     
     private func deleteEntry() {
         journalManager.deleteEntry(id: entryId) { success in
-            if success { dismiss() }
+            if success {
+                dismiss()
+            }
         }
     }
     
     private func formatDate(_ date: Kotlinx_datetimeLocalDate) -> String {
-        "\(date.month.name.prefix(3)) \(date.dayOfMonth), \(date.year)"
+        let components = DateComponents(
+            year: Int(date.year),
+            month: Int(date.monthNumber),
+            day: Int(date.dayOfMonth)
+        )
+        if let swiftDate = Calendar.current.date(from: components) {
+            return swiftDate.formatted(.dateTime.month(.abbreviated).day().year())
+        }
+        return "\(date.month) \(date.dayOfMonth), \(date.year)"
+    }
+    
+    private func cleanMarkdown(_ text: String) -> String {
+        // Remove strikethrough markers for display, keep the content
+        text.replacingOccurrences(of: "~~", with: "")
+    }
+    
+    private func moodEmoji(for score: Int) -> String {
+        switch score {
+        case 1...2: return "😢"
+        case 3...4: return "😔"
+        case 5...6: return "😐"
+        case 7...8: return "😊"
+        case 9...10: return "😄"
+        default: return "😶"
+        }
     }
 }
 
