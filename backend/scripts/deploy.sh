@@ -1,8 +1,8 @@
 #!/bin/bash
-# Deploy JanusLeaf Backend to Oracle Cloud Instance
+# Deploy JanusLeaf Backend to Oracle Cloud Instance (JAR deployment)
 # Usage: ./scripts/deploy.sh <oracle-ip> [ssh-key-path]
 
-set -e
+# Don't exit on error - we handle errors manually
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,11 +12,13 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
+
 ORACLE_IP="${1:-}"
-SSH_KEY="${2:-~/.ssh/id_rsa}"
-SSH_USER="${SSH_USER:-ubuntu}"
+SSH_KEY="${2:-$BACKEND_DIR/secrets/oracle-ssh.key}"
+SSH_USER="${SSH_USER:-opc}"
 REMOTE_DIR="/home/${SSH_USER}/janusleaf"
-APP_NAME="janusleaf-api"
 
 # Check arguments
 if [ -z "$ORACLE_IP" ]; then
@@ -25,11 +27,11 @@ if [ -z "$ORACLE_IP" ]; then
     echo "Usage: ./scripts/deploy.sh <oracle-ip> [ssh-key-path]"
     echo ""
     echo "Examples:"
-    echo "  ./scripts/deploy.sh 129.153.xx.xx"
-    echo "  ./scripts/deploy.sh 129.153.xx.xx ~/.ssh/oracle-key.pem"
+    echo "  ./scripts/deploy.sh 158.180.228.188"
+    echo "  ./scripts/deploy.sh 158.180.228.188 ~/.ssh/oracle-key.pem"
     echo ""
     echo "Environment variables:"
-    echo "  SSH_USER - Remote user (default: ubuntu, use 'opc' for Oracle Linux)"
+    echo "  SSH_USER - Remote user (default: opc for Oracle Linux)"
     exit 1
 fi
 
@@ -38,100 +40,133 @@ echo -e "   Instance: ${ORACLE_IP}"
 echo -e "   User: ${SSH_USER}"
 echo ""
 
-# Check if .env.prod exists locally for reference
-if [ ! -f ".env.prod" ]; then
-    echo -e "${YELLOW}⚠️  No .env.prod file found locally${NC}"
-    echo -e "   Make sure you have .env configured on the server!"
-    echo ""
+# Step 1: Generate .env file from secrets.properties
+echo -e "${BLUE}🔐 Generating environment file...${NC}"
+SECRETS_FILE="secrets.properties"
+ENV_FILE=".env.oracle"
+
+if [ ! -f "$SECRETS_FILE" ]; then
+    echo -e "${RED}❌ Error: secrets.properties not found${NC}"
+    echo "   Make sure you've run 'git-crypt unlock' first."
+    exit 1
 fi
 
-# Step 1: Create remote directory structure
+# Check if secrets.properties is decrypted
+if file "$SECRETS_FILE" | grep -q "data"; then
+    echo -e "${RED}❌ Error: secrets.properties is encrypted${NC}"
+    echo "   Run 'git-crypt unlock' to decrypt it first."
+    exit 1
+fi
+
+# Generate .env file with export statements for Oracle
+cat > "$ENV_FILE" << 'HEADER'
+# Production Environment Variables for Oracle
+# Generated from secrets.properties - DO NOT COMMIT!
+
+export SPRING_PROFILES_ACTIVE=prod
+HEADER
+
+while IFS= read -r line || [ -n "$line" ]; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    
+    # Extract key and value
+    if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+        
+        # Convert dots and hyphens to underscores and uppercase
+        env_key=$(echo "$key" | tr '.-' '_' | tr '[:lower:]' '[:upper:]')
+        
+        # Write to .env with export
+        echo "export ${env_key}=${value}" >> "$ENV_FILE"
+    fi
+done < "$SECRETS_FILE"
+
+echo -e "${GREEN}   ✓ Environment file generated${NC}"
+
+# Step 2: Build JAR locally
+echo -e "${BLUE}🔨 Building JAR...${NC}"
+./gradlew bootJar --quiet
+
+# Check if build succeeded
+if [ ! -f "build/libs/janusleaf-backend-1.0.0.jar" ]; then
+    echo -e "${RED}❌ Build failed - JAR not found${NC}"
+    exit 1
+fi
+echo -e "${GREEN}   ✓ Build successful${NC}"
+
+# Step 2: Create remote directory
 echo -e "${BLUE}📁 Setting up remote directory...${NC}"
 ssh -i "$SSH_KEY" "${SSH_USER}@${ORACLE_IP}" "mkdir -p ${REMOTE_DIR}"
 
-# Step 2: Copy deployment files
-echo -e "${BLUE}📦 Copying deployment files...${NC}"
-scp -i "$SSH_KEY" \
-    Dockerfile \
-    docker-compose.prod.yml \
-    build.gradle.kts \
-    settings.gradle.kts \
-    gradle.properties \
-    gradlew \
-    "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/"
+# Step 3: Stop existing app if running
+echo -e "${BLUE}🛑 Stopping existing app...${NC}"
+ssh -i "$SSH_KEY" "${SSH_USER}@${ORACLE_IP}" 'pgrep -f "java.*app.jar" && pkill -f "java.*app.jar" && echo "Stopped" || echo "No app was running"'
+sleep 2
+echo -e "${GREEN}   ✓ Done${NC}"
 
-# Copy gradle wrapper
-ssh -i "$SSH_KEY" "${SSH_USER}@${ORACLE_IP}" "mkdir -p ${REMOTE_DIR}/gradle/wrapper"
-scp -i "$SSH_KEY" \
-    gradle/wrapper/gradle-wrapper.jar \
-    gradle/wrapper/gradle-wrapper.properties \
-    "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/gradle/wrapper/"
+# Step 4: Upload .env file to Oracle
+echo -e "${BLUE}🔐 Uploading environment file...${NC}"
+scp -i "$SSH_KEY" "$ENV_FILE" "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/.env"
+echo -e "${GREEN}   ✓ Environment file uploaded${NC}"
 
-# Copy source code
-echo -e "${BLUE}📦 Copying source code...${NC}"
-ssh -i "$SSH_KEY" "${SSH_USER}@${ORACLE_IP}" "mkdir -p ${REMOTE_DIR}/src"
-scp -i "$SSH_KEY" -r src/main "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/src/"
+# Step 5: Copy JAR to Oracle
+echo -e "${BLUE}📦 Uploading JAR to Oracle...${NC}"
+scp -i "$SSH_KEY" build/libs/janusleaf-backend-1.0.0.jar "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/app.jar"
+echo -e "${GREEN}   ✓ Upload complete${NC}"
 
-# Step 3: Copy .env.prod if it exists
-if [ -f ".env.prod" ]; then
-    echo -e "${BLUE}🔐 Copying environment file...${NC}"
-    scp -i "$SSH_KEY" .env.prod "${SSH_USER}@${ORACLE_IP}:${REMOTE_DIR}/.env"
-fi
+# Cleanup local temp file
+rm -f "$ENV_FILE"
 
-# Step 4: Build and deploy on remote
-echo -e "${BLUE}🔨 Building and deploying on Oracle instance...${NC}"
+# Step 6: Start the app
+echo -e "${BLUE}🚀 Starting application...${NC}"
 ssh -i "$SSH_KEY" "${SSH_USER}@${ORACLE_IP}" << 'REMOTE_SCRIPT'
 cd ~/janusleaf
 
 # Check if .env exists
 if [ ! -f ".env" ]; then
     echo "❌ Error: .env file not found!"
-    echo "   Create .env with your Supabase and JWT credentials"
+    echo "   Create ~/janusleaf/.env with your credentials"
     exit 1
 fi
 
-# Check Docker is installed
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker not installed. Run setup script first."
-    exit 1
-fi
+# Load environment variables
+source .env
 
-# Stop existing container if running
-echo "🛑 Stopping existing container..."
-docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+# Start the app in background
+nohup java -Xmx400m -Xms200m -jar app.jar > app.log 2>&1 &
 
-# Build and start
-echo "🔨 Building Docker image..."
-docker-compose -f docker-compose.prod.yml build --no-cache
-
-echo "🚀 Starting container..."
-docker-compose -f docker-compose.prod.yml up -d
-
-# Wait for health check
 echo "⏳ Waiting for application to start..."
-sleep 10
+sleep 15
 
-# Check status
-if docker ps | grep -q janusleaf-api; then
-    echo "✅ Deployment successful!"
-    echo ""
-    echo "📊 Container status:"
-    docker ps --filter name=janusleaf-api --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# Check if app is running
+if pgrep -f "java -jar.*app.jar" > /dev/null; then
+    echo "✅ Application started!"
 else
-    echo "❌ Deployment failed!"
-    echo "📋 Container logs:"
-    docker-compose -f docker-compose.prod.yml logs --tail=50
+    echo "❌ Application failed to start"
+    echo "📋 Last 20 lines of log:"
+    tail -20 app.log
     exit 1
 fi
 REMOTE_SCRIPT
+
+# Step 6: Health check
+echo -e "${BLUE}🏥 Running health check...${NC}"
+sleep 5
+if curl -s --connect-timeout 10 "http://${ORACLE_IP}:8080/api/health" > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✓ Health check passed${NC}"
+else
+    echo -e "${YELLOW}   ⚠ Health check pending (app may still be starting)${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo ""
 echo -e "🔗 Your API is available at:"
-echo -e "   http://${ORACLE_IP}:8080/api/health"
+echo -e "   ${BLUE}http://${ORACLE_IP}:8080/api/health${NC}"
 echo ""
 echo -e "📋 Useful commands (run on Oracle instance):"
-echo -e "   ${YELLOW}docker logs -f janusleaf-api${NC}     # View logs"
-echo -e "   ${YELLOW}docker restart janusleaf-api${NC}     # Restart app"
-echo -e "   ${YELLOW}docker-compose -f docker-compose.prod.yml down${NC}  # Stop app"
+echo -e "   ${YELLOW}tail -f ~/janusleaf/app.log${NC}           # View logs"
+echo -e "   ${YELLOW}pkill -f 'java -jar'${NC}                  # Stop app"
+echo -e "   ${YELLOW}cd ~/janusleaf && source .env && nohup java -Xmx400m -Xms200m -jar app.jar > app.log 2>&1 &${NC}  # Start app"
