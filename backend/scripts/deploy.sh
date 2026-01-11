@@ -20,6 +20,9 @@ SSH_KEY="${2:-$BACKEND_DIR/secrets/oracle-ssh.key}"
 SSH_USER="${SSH_USER:-opc}"
 REMOTE_DIR="/home/${SSH_USER}/janusleaf"
 
+# Fix SSH key permissions if needed
+chmod 600 "$SSH_KEY" 2>/dev/null || true
+
 # Check arguments
 if [ -z "$ORACLE_IP" ]; then
     echo -e "${RED}❌ Error: Oracle instance IP required${NC}"

@@ -91,6 +91,7 @@ logs-last:
 
 ssh:
 	@echo "🔗 Connecting to $(ORACLE_IP)..."
+	@chmod 600 $(SSH_KEY) 2>/dev/null || true
 	ssh -i $(SSH_KEY) $(SSH_USER)@$(ORACLE_IP)
 
 health:
@@ -99,10 +100,12 @@ health:
 
 stop:
 	@echo "🛑 Stopping app on $(ORACLE_IP)..."
+	@chmod 600 $(SSH_KEY) 2>/dev/null || true
 	ssh -i $(SSH_KEY) $(SSH_USER)@$(ORACLE_IP) "pkill -f 'java.*app.jar' || echo 'App not running'"
 
 restart:
 	@echo "🔄 Restarting app on $(ORACLE_IP)..."
+	@chmod 600 $(SSH_KEY) 2>/dev/null || true
 	ssh -i $(SSH_KEY) $(SSH_USER)@$(ORACLE_IP) '\
 		pkill -f "java.*app.jar" 2>/dev/null || true; \
 		sleep 2; \
