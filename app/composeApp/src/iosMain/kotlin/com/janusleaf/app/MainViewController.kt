@@ -1,8 +1,10 @@
 package com.janusleaf.app
 
 import com.janusleaf.app.ios.IosAuthService
+import com.janusleaf.app.ios.IosInspirationService
 import com.janusleaf.app.ios.IosJournalService
 import com.janusleaf.app.ios.createAuthService
+import com.janusleaf.app.ios.createInspirationService
 import com.janusleaf.app.ios.createJournalService
 
 /**
@@ -19,4 +21,9 @@ object SharedModule {
      * Create an instance of the journal service for iOS.
      */
     fun createJournalService(): IosJournalService = com.janusleaf.app.ios.createJournalService()
+    
+    /**
+     * Create an instance of the inspiration service for iOS.
+     */
+    fun createInspirationService(): IosInspirationService = com.janusleaf.app.ios.createInspirationService()
 }

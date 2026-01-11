@@ -14,8 +14,17 @@ data class MoodAnalysisJobProperties(
 )
 
 /**
+ * Configuration for inspirational quote generation job scheduling.
+ */
+@ConfigurationProperties(prefix = "jobs.inspirational-quote")
+data class InspirationalQuoteJobProperties(
+    /** Cron expression for quote generation polling. Default: every 30 seconds */
+    val cron: String = "*/30 * * * * *"
+)
+
+/**
  * Root configuration for all scheduled jobs.
  */
 @Configuration
-@EnableConfigurationProperties(MoodAnalysisJobProperties::class)
+@EnableConfigurationProperties(MoodAnalysisJobProperties::class, InspirationalQuoteJobProperties::class)
 class JobsConfig

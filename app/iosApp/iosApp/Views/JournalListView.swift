@@ -5,11 +5,13 @@ import Shared
 struct JournalListView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var journalManager: JournalManager
+    @StateObject private var inspirationManager = InspirationManager()
     
     @State private var selectedEntryId: String? = nil
     @State private var showLogoutConfirmation = false
     @State private var animateItems = false
     @State private var moodPollingTimer: Timer? = nil
+    @State private var inspirationPollingTimer: Timer? = nil
     @State private var isCreatingEntry = false
     
     var body: some View {
@@ -58,13 +60,16 @@ struct JournalListView: View {
         }
         .onAppear {
             journalManager.loadEntries()
+            inspirationManager.fetchQuote()
             withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
                 animateItems = true
             }
             startMoodPolling()
+            startInspirationPolling()
         }
         .onDisappear {
             stopMoodPolling()
+            stopInspirationPolling()
         }
     }
     
@@ -85,6 +90,24 @@ struct JournalListView: View {
     private func stopMoodPolling() {
         moodPollingTimer?.invalidate()
         moodPollingTimer = nil
+    }
+    
+    // MARK: - Inspiration Polling
+    
+    /// Start polling for inspiration quote updates (when quote is not found yet)
+    private func startInspirationPolling() {
+        // Poll every 10 seconds if no quote is available yet (more responsive)
+        inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
+            // Refresh if quote is not found OR if we haven't loaded yet
+            if inspirationManager.isNotFound || (inspirationManager.quote == nil && !inspirationManager.isLoading) {
+                inspirationManager.refresh()
+            }
+        }
+    }
+    
+    private func stopInspirationPolling() {
+        inspirationPollingTimer?.invalidate()
+        inspirationPollingTimer = nil
     }
     
     // MARK: - Header View
@@ -118,7 +141,7 @@ struct JournalListView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 60)
-        .padding(.bottom, 20)
+        .padding(.bottom, 8)
         .opacity(animateItems ? 1 : 0)
         .offset(y: animateItems ? 0 : -20)
     }
@@ -126,12 +149,26 @@ struct JournalListView: View {
     // MARK: - Journal List
     
     private var journalListView: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 16) {
+                // Inspirational quote section
+                InspirationalQuoteView(inspirationManager: inspirationManager)
+                    .padding(.top, 4)
+                    .opacity(animateItems ? 1 : 0)
+                    .offset(y: animateItems ? 0 : 20)
+                    .animation(
+                        .spring(response: 0.6, dampingFraction: 0.8).delay(0.1),
+                        value: animateItems
+                    )
+                
                 // New entry button
                 newEntryButton
                     .opacity(animateItems ? 1 : 0)
                     .offset(y: animateItems ? 0 : 30)
+                    .animation(
+                        .spring(response: 0.5, dampingFraction: 0.8).delay(0.2),
+                        value: animateItems
+                    )
                 
                 ForEach(Array(journalManager.entries.enumerated()), id: \.element.id) { index, entry in
                     JournalEntryCard(entry: entry) {
@@ -141,7 +178,7 @@ struct JournalListView: View {
                     .offset(y: animateItems ? 0 : 30)
                     .animation(
                         .spring(response: 0.5, dampingFraction: 0.8)
-                        .delay(Double(index) * 0.05),
+                        .delay(0.3 + Double(index) * 0.05),
                         value: animateItems
                     )
                 }
@@ -156,6 +193,7 @@ struct JournalListView: View {
         }
         .refreshable {
             journalManager.refresh()
+            inspirationManager.refresh()
         }
     }
     
@@ -235,6 +273,10 @@ struct JournalListView: View {
             isCreatingEntry = false
             if let journal = journal {
                 selectedEntryId = journal.id
+                // Refresh inspiration after creating new entry (triggers regeneration on backend)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    inspirationManager.refresh()
+                }
             }
         }
     }
@@ -242,68 +284,74 @@ struct JournalListView: View {
     // MARK: - Empty State
     
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color.green.opacity(0.2), Color.clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 80
-                        )
-                    )
-                    .frame(width: 160, height: 160)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Show pending inspiration state even in empty view
+                InspirationPendingView()
+                    .padding(.top, 20)
                 
-                Text("📔")
-                    .font(.system(size: 72))
-            }
-            
-            VStack(spacing: 12) {
-                Text("Start Your Journey")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text("Your journal is empty.\nTap below to create your first entry.")
-                    .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(0.6))
-                    .multilineTextAlignment(.center)
-            }
-            
-            Button(action: createNewEntry) {
-                HStack(spacing: 8) {
-                    if isCreatingEntry {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Create Entry")
-                    }
-                }
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.2, green: 0.5, blue: 0.3), Color(red: 0.15, green: 0.45, blue: 0.25)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                VStack(spacing: 32) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.green.opacity(0.2), Color.clear],
+                                    center: .center,
+                                    startRadius: 0,
+                                    endRadius: 80
+                                )
                             )
+                            .frame(width: 160, height: 160)
+                        
+                        Text("📔")
+                            .font(.system(size: 72))
+                    }
+                    
+                    VStack(spacing: 12) {
+                        Text("Start Your Journey")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        Text("Your journal is empty.\nTap below to create your first entry.")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    Button(action: createNewEntry) {
+                        HStack(spacing: 8) {
+                            if isCreatingEntry {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Create Entry")
+                            }
+                        }
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 16)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color(red: 0.2, green: 0.5, blue: 0.3), Color(red: 0.15, green: 0.45, blue: 0.25)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         )
-                )
-                .shadow(color: .green.opacity(0.4), radius: 20, x: 0, y: 10)
+                        .shadow(color: .green.opacity(0.4), radius: 20, x: 0, y: 10)
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                    .disabled(isCreatingEntry)
+                }
+                .padding(.top, 20)
             }
-            .buttonStyle(ScaleButtonStyle())
-            .disabled(isCreatingEntry)
-            
-            Spacer()
+            .padding(.horizontal, 20)
+            .padding(.bottom, 40)
         }
-        .padding(.horizontal, 40)
     }
     
     // MARK: - Loading View

@@ -8,7 +8,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if authManager.isAuthenticated {
-                JournalListView()
+                MainTabView()
                     .environmentObject(journalManager)
             } else {
                 AuthView()

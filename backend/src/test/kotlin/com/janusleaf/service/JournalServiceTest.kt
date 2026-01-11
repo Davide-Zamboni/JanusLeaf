@@ -29,6 +29,7 @@ class JournalServiceTest {
     private lateinit var journalEntryRepository: JournalEntryRepository
     private lateinit var userRepository: UserRepository
     private lateinit var moodAnalysisService: MoodAnalysisService
+    private lateinit var inspirationalQuoteService: InspirationalQuoteService
     private lateinit var journalService: JournalService
 
     private val testUserId = UUID.randomUUID()
@@ -65,7 +66,8 @@ class JournalServiceTest {
         journalEntryRepository = mockk()
         userRepository = mockk()
         moodAnalysisService = mockk(relaxed = true) // Relaxed mock - we don't care about mood analysis in most tests
-        journalService = JournalService(journalEntryRepository, userRepository, moodAnalysisService)
+        inspirationalQuoteService = mockk(relaxed = true) // Relaxed mock - we don't care about quote regeneration in most tests
+        journalService = JournalService(journalEntryRepository, userRepository, moodAnalysisService, inspirationalQuoteService)
     }
 
     @Nested

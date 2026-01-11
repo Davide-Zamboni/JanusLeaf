@@ -64,6 +64,10 @@ jobs:
     # Cron expression for mood analysis queue polling
     # Format: second minute hour day-of-month month day-of-week
     cron: ${MOOD_ANALYSIS_CRON:*/3 * * * * *}
+  inspirational-quote:
+    # Cron expression for inspirational quote generation
+    # Runs every 30 seconds to check for quotes needing generation/regeneration
+    cron: ${INSPIRATIONAL_QUOTE_CRON:*/30 * * * * *}
 
 # Logging
 logging:

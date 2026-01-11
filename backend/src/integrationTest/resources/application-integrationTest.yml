@@ -32,6 +32,8 @@ openrouter:
 jobs:
   mood-analysis:
     cron: "0 0 0 1 1 *"  # Run once a year (effectively disabled)
+  inspirational-quote:
+    cron: "0 0 0 1 1 *"  # Run once a year (effectively disabled)
 
 logging:
   level:
