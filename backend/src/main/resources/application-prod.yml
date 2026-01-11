@@ -1,0 +1,19 @@
+# Production Profile
+# Uses Supabase PostgreSQL
+# Activated automatically on Oracle Cloud via environment variable
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
+  jpa:
+    show-sql: false
+
+# Production logging - less verbose
+logging:
+  level:
+    com.janusleaf: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

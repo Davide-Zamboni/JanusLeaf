@@ -1,13 +1,12 @@
 spring:
   application:
     name: janusleaf
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   config:
     import: optional:file:./secrets.properties
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/janusleaf}
-    username: ${DATABASE_USERNAME:janusleaf}
-    password: ${DATABASE_PASSWORD:janusleaf}
     driver-class-name: org.postgresql.Driver
 
   jpa:
