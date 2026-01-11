@@ -1,0 +1,27 @@
+# Production docker-compose - App only (Database on Supabase)
+# Usage: docker-compose -f docker-compose.prod.yml up -d --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: janusleaf-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_EXPIRATION=${JWT_ACCESS_EXPIRATION:-900000}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
