@@ -5,6 +5,11 @@
 **/secrets.properties filter=git-crypt diff=git-crypt
 **/secrets.kt filter=git-crypt diff=git-crypt
 secrets/** filter=git-crypt diff=git-crypt
+**/secrets/** filter=git-crypt diff=git-crypt
+
+# SSH keys
+*.key filter=git-crypt diff=git-crypt
+*.pem filter=git-crypt diff=git-crypt
 
 # API keys and credentials
 *.secret filter=git-crypt diff=git-crypt

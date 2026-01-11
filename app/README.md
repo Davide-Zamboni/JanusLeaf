@@ -189,17 +189,16 @@ The app features a custom design system inspired by **2026 design trends**:
 
 The app supports **build-time environment configuration** via Gradle flags:
 
-#### Production Build (Render deployment)
+#### Production Build
 
 ```bash
 # Android
 ./gradlew :composeApp:assembleDebug -PuseProduction=true
 ./gradlew :composeApp:assembleRelease -PuseProduction=true
 
-# iOS - Build shared framework first
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 -PuseProduction=true
-./gradlew :composeApp:linkReleaseFrameworkIosArm64 -PuseProduction=true
-# Then build in Xcode
+# iOS - Build shared framework for both simulator and device
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 :composeApp:linkDebugFrameworkIosArm64 -PuseProduction=true
+# Then build in Xcode (works for both simulator and physical device)
 ```
 
 #### Development Build (local backend)
@@ -218,8 +217,8 @@ Update your production URL in `composeApp/src/commonMain/kotlin/com/janusleaf/ap
 
 ```kotlin
 object ApiConfig {
-    // Production URL (Render)
-    const val PRODUCTION_BASE_URL = "https://janusleaf.onrender.com"
+    // Production URL
+    const val PRODUCTION_BASE_URL = "http://158.180.228.188:8080"
     
     // Development URLs (automatic per platform):
     // - Android Emulator: 10.0.2.2:8080

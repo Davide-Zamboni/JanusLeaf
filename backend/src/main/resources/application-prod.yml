@@ -4,9 +4,14 @@
 
 spring:
   datasource:
-    url: ${DATABASE_URL}
+    # Append prepareThreshold=0 to disable prepared statements (required for Supabase PgBouncer)
+    url: ${DATABASE_URL}?prepareThreshold=0
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
 
   jpa:
     show-sql: false
