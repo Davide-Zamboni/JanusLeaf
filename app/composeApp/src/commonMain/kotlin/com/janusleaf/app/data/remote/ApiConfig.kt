@@ -13,6 +13,7 @@ import io.ktor.client.HttpClient
  * Production servers have automatic failover between:
  *   - Primary: 80.225.83.90:8080
  *   - Secondary: 158.180.228.188:8080
+ *   - Tertiary: https://janusleaf.onrender.com
  */
 object ApiConfig {
     // Use build-time configuration
