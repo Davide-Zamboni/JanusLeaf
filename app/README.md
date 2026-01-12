@@ -106,14 +106,51 @@ cd ../backend
 
 ### Running on iOS
 
-1. Build the iOS framework:
+#### 1. Build the iOS framework
+
+**Important:** You must build for the correct architecture based on your target:
+
+| Target | Build Command |
+|--------|---------------|
+| **iPhone Simulator** | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` |
+| **Physical iPhone** | `./gradlew :composeApp:linkDebugFrameworkIosArm64` |
+| **Both (recommended)** | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 :composeApp:linkDebugFrameworkIosArm64` |
+
+For **development** (local backend):
 ```bash
+# Simulator only
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+# Physical device only
+./gradlew :composeApp:linkDebugFrameworkIosArm64
+
+# Both simulator and device
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 :composeApp:linkDebugFrameworkIosArm64
 ```
 
-2. Open `iosApp/iosApp.xcodeproj` in Xcode
+For **production** (remote servers with failover):
+```bash
+# Simulator only
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 -PuseProduction=true
 
-3. Run on simulator or device
+# Physical device only
+./gradlew :composeApp:linkDebugFrameworkIosArm64 -PuseProduction=true
+
+# Both simulator and device (recommended)
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 :composeApp:linkDebugFrameworkIosArm64 -PuseProduction=true
+```
+
+#### 2. Open in Xcode
+
+Open `iosApp/iosApp.xcodeproj` in Xcode
+
+#### 3. Build and Run
+
+- Select your target (Simulator or Physical Device)
+- **Clean Build Folder** (Product → Clean Build Folder) if you changed the Gradle build
+- Build and Run
+
+> ⚠️ **Common Issue**: If the app works on simulator but not on physical device, you likely built only for simulator. Run the `linkDebugFrameworkIosArm64` task for physical devices.
 
 ---
 

@@ -72,14 +72,22 @@ class InspirationalQuoteService(
         """.trimIndent()
 
         private val DEFAULT_QUOTE_PROMPT = """
-            Generate a universal, uplifting inspirational quote for someone starting their journaling journey.
-            The quote should encourage self-reflection and personal growth.
-            
-            Also provide 4 general positive tags related to personal growth and journaling.
-            
-            Respond with ONLY a JSON object in this exact format (no markdown, no explanation):
-            {"quote": "Your inspirational quote here", "tags": ["tag1", "tag2", "tag3", "tag4"]}
-        """.trimIndent()
+    Generate a personalized inspirational quote that closely mimics the user's writing style, tone, and emotional patterns.
+    The quote should feel like it could have been written by the user themselves.
+    
+    Do NOT be vague or generic.
+    Use concrete language and draw inspiration from themes, struggles, reflections, or moments that commonly appear in real journal entries
+    (e.g., doubts, small wins, recurring thoughts, unfinished goals, emotional honesty).
+    
+    The quote should encourage self-reflection and personal growth in a grounded, realistic way,
+    as if responding directly to what someone actually writes in their journal.
+    
+    Also provide 4 general positive tags related to personal growth and journaling.
+    
+    Respond with ONLY a JSON object in this exact format (no markdown, no explanation):
+    {"quote": "Your inspirational quote here", "tags": ["tag1", "tag2", "tag3", "tag4"]}
+""".trimIndent()
+
     }
 
     /**
@@ -112,7 +120,7 @@ class InspirationalQuoteService(
     @Transactional
     fun processQuoteGeneration() {
         logger.info("Starting inspirational quote generation job")
-        
+
         // Skip if no API key configured
         if (openRouterProperties.apiKey.isBlank()) {
             logger.warn("OpenRouter API key not configured - skipping quote generation")
@@ -135,7 +143,7 @@ class InspirationalQuoteService(
         // 2. Regenerate quotes that need updating (flagged or older than 24 hours) - process ONE at a time
         val cutoffTime = Instant.now().minusSeconds(24 * 60 * 60)
         val quotesNeedingRegeneration = inspirationalQuoteRepository.findQuotesNeedingRegeneration(cutoffTime)
-        
+
         if (quotesNeedingRegeneration.isNotEmpty()) {
             logger.info("Found ${quotesNeedingRegeneration.size} quotes needing regeneration")
             val quote = quotesNeedingRegeneration.first()
@@ -152,16 +160,16 @@ class InspirationalQuoteService(
      */
     private fun generateQuoteForUser(userId: UUID) {
         logger.info("Generating initial quote for user $userId")
-        
+
         val journalContent = getJournalContentForUser(userId)
         var result = callApiForQuote(journalContent, useFallback = false)
-        
+
         // If rate limited and fallback is enabled, try the fallback API
         if (result is QuoteApiResult.RateLimited && openRouterProperties.fallback.enabled) {
             logger.info("Primary API rate limited, trying fallback API for user $userId")
             result = callApiForQuote(journalContent, useFallback = true)
         }
-        
+
         when (result) {
             is QuoteApiResult.Success -> {
                 val user = userRepository.getReferenceById(userId)
@@ -175,9 +183,11 @@ class InspirationalQuoteService(
                 inspirationalQuoteRepository.save(quote)
                 logger.info("Created inspirational quote for user $userId")
             }
+
             is QuoteApiResult.RateLimited -> {
                 logger.warn("Both APIs rate limited for user $userId - will retry later")
             }
+
             is QuoteApiResult.Failure -> {
                 logger.warn("Failed to generate quote for user $userId - will retry later")
             }
@@ -190,16 +200,16 @@ class InspirationalQuoteService(
     private fun regenerateQuote(quote: InspirationalQuote) {
         val userId = quote.user.id
         logger.info("Regenerating quote for user $userId")
-        
+
         val journalContent = getJournalContentForUser(userId)
         var result = callApiForQuote(journalContent, useFallback = false)
-        
+
         // If rate limited and fallback is enabled, try the fallback API
         if (result is QuoteApiResult.RateLimited && openRouterProperties.fallback.enabled) {
             logger.info("Primary API rate limited, trying fallback API for user $userId")
             result = callApiForQuote(journalContent, useFallback = true)
         }
-        
+
         when (result) {
             is QuoteApiResult.Success -> {
                 quote.quote = result.data.quote
@@ -209,9 +219,11 @@ class InspirationalQuoteService(
                 inspirationalQuoteRepository.save(quote)
                 logger.info("Regenerated inspirational quote for user $userId")
             }
+
             is QuoteApiResult.RateLimited -> {
                 logger.warn("Both APIs rate limited for user $userId - will retry later")
             }
+
             is QuoteApiResult.Failure -> {
                 logger.warn("Failed to regenerate quote for user $userId - will retry later")
             }
@@ -225,7 +237,7 @@ class InspirationalQuoteService(
     private fun getJournalContentForUser(userId: UUID): String? {
         val pageable = PageRequest.of(0, MAX_JOURNAL_ENTRIES, Sort.by(Sort.Direction.DESC, "entryDate"))
         val entries = journalEntryRepository.findByUserId(userId, pageable)
-        
+
         if (entries.isEmpty) {
             logger.debug("User $userId has no journal entries")
             return null
@@ -233,7 +245,7 @@ class InspirationalQuoteService(
 
         return entries.content
             .filter { it.body.isNotBlank() }
-            .mapIndexed { index, entry -> 
+            .mapIndexed { index, entry ->
                 "Entry ${index + 1} (${entry.entryDate}):\n${entry.title}\n${entry.body}"
             }
             .joinToString("\n\n---\n\n")
@@ -270,7 +282,7 @@ class InspirationalQuoteService(
                 .block()
 
             val content = response?.choices?.firstOrNull()?.message?.content?.trim()
-            
+
             if (content != null) {
                 val parsed = parseQuoteResponse(content)
                 if (parsed != null) {
@@ -311,31 +323,31 @@ class InspirationalQuoteService(
                     .replace(Regex("^[^{]*"), "") // Remove everything before first {
                     .replace(Regex("[^}]*$"), "") // Remove everything after last }
                     .trim()
-            
+
             if (cleanContent.isBlank()) {
                 logger.warn("Could not extract JSON from response: $content")
                 return null
             }
-            
+
             val result = objectMapper.readValue(cleanContent, QuoteGenerationResult::class.java)
-            
+
             // Validate the result
             if (result.quote.isBlank()) {
                 logger.warn("Received empty quote from AI")
                 return null
             }
-            
+
             // Ensure exactly 4 tags
             val tags = result.tags
                 .filter { it.isNotBlank() }
                 .take(4)
                 .toMutableList()
-            
+
             // Pad with default tags if needed
             while (tags.size < 4) {
                 tags.add(listOf("growth", "reflection", "journey", "mindfulness")[tags.size])
             }
-            
+
             QuoteGenerationResult(result.quote, tags)
         } catch (e: Exception) {
             logger.error("Failed to parse quote response: $content", e)
