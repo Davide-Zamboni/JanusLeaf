@@ -3,12 +3,15 @@ package com.janusleaf.app.ios
 import com.janusleaf.app.data.local.IosSecureTokenStorage
 import com.janusleaf.app.data.remote.AuthApiService
 import com.janusleaf.app.data.remote.JournalApiService
+import com.janusleaf.app.data.remote.ServerAvailabilityManager
 import com.janusleaf.app.data.remote.createApiHttpClient
+import com.janusleaf.app.data.remote.getAvailableBaseUrl
 import com.janusleaf.app.data.remote.getPlatformBaseUrl
 import com.janusleaf.app.data.repository.JournalRepositoryImpl
 import com.janusleaf.app.domain.model.*
 import com.janusleaf.app.domain.repository.JournalRepository
 import io.github.aakira.napier.Napier
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,16 +24,24 @@ import kotlinx.datetime.LocalDate
 /**
  * iOS-friendly journal service.
  * This class provides a simple API for SwiftUI to interact with journal functionality.
+ * 
+ * In production mode, automatically checks server availability and
+ * fails over between production servers if needed.
  */
 class IosJournalService {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
-    private val baseUrl = getPlatformBaseUrl()
     private val tokenStorage = IosSecureTokenStorage()
     private val httpClient = createApiHttpClient()
-    private val journalApiService = JournalApiService(httpClient, baseUrl)
-    private val authApiService = AuthApiService(httpClient, baseUrl)
-    private val repository: JournalRepository = JournalRepositoryImpl(journalApiService, tokenStorage, authApiService)
+    
+    // Use sync URL initially, will be updated after availability check
+    @Volatile
+    private var currentBaseUrl = getPlatformBaseUrl()
+    
+    // Services that will be recreated with new URL if needed
+    private var journalApiService = JournalApiService(httpClient, currentBaseUrl)
+    private var authApiService = AuthApiService(httpClient, currentBaseUrl)
+    private var repository: JournalRepository = JournalRepositoryImpl(journalApiService, tokenStorage, authApiService)
     
     // Observable state for SwiftUI
     private val _isLoading = MutableStateFlow(false)
@@ -61,6 +72,42 @@ class IosJournalService {
     
     init {
         Napier.i("IosJournalService initialized", tag = "JournalService")
+        Napier.i("Initial Base URL: $currentBaseUrl", tag = "JournalService")
+        
+        // Check server availability on init
+        scope.launch {
+            checkServerAvailability()
+        }
+    }
+    
+    /**
+     * Check server availability and update the base URL if needed.
+     * This is called at startup and can be called again if network errors occur.
+     */
+    private suspend fun checkServerAvailability() {
+        try {
+            val availableUrl = getAvailableBaseUrl(httpClient)
+            if (availableUrl != currentBaseUrl) {
+                Napier.i("Updating base URL from $currentBaseUrl to $availableUrl", tag = "JournalService")
+                currentBaseUrl = availableUrl
+                // Recreate services with new URL
+                journalApiService = JournalApiService(httpClient, currentBaseUrl)
+                authApiService = AuthApiService(httpClient, currentBaseUrl)
+                repository = JournalRepositoryImpl(journalApiService, tokenStorage, authApiService)
+            }
+            Napier.i("Using server: $currentBaseUrl", tag = "JournalService")
+        } catch (e: Exception) {
+            Napier.e("Failed to check server availability: ${e.message}", e, tag = "JournalService")
+        }
+    }
+    
+    /**
+     * Handle network error by invalidating server cache and retrying.
+     * Call this when a network error occurs to try the failover server.
+     */
+    private suspend fun handleNetworkError() {
+        ServerAvailabilityManager.reportServerFailure(currentBaseUrl)
+        checkServerAvailability()
     }
     
     /**
@@ -72,16 +119,27 @@ class IosJournalService {
             _errorMessage.value = null
             currentPage = 0
             
-            when (val result = repository.listEntries(page = 0, size = 20)) {
+            val result = repository.listEntries(page = 0, size = 20)
+            
+            // Handle network error with failover retry
+            val finalResult = if (result is JournalResult.Error && result.error is JournalError.NetworkError) {
+                Napier.w("Load entries failed with network error, trying failover...", tag = "JournalService")
+                handleNetworkError()
+                repository.listEntries(page = 0, size = 20) // Retry with new server
+            } else {
+                result
+            }
+            
+            when (finalResult) {
                 is JournalResult.Success -> {
-                    _entries.value = result.data.entries
-                    _hasMore.value = result.data.hasNext
+                    _entries.value = finalResult.data.entries
+                    _hasMore.value = finalResult.data.hasNext
                     currentPage = 0
-                    Napier.d("Loaded ${result.data.entries.size} entries", tag = "JournalService")
+                    Napier.d("Loaded ${finalResult.data.entries.size} entries", tag = "JournalService")
                 }
                 is JournalResult.Error -> {
-                    _errorMessage.value = result.error.toUserMessage()
-                    Napier.e("Failed to load entries: ${result.error}", tag = "JournalService")
+                    _errorMessage.value = finalResult.error.toUserMessage()
+                    Napier.e("Failed to load entries: ${finalResult.error}", tag = "JournalService")
                 }
                 is JournalResult.Loading -> {}
             }
