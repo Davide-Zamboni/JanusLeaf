@@ -18,18 +18,17 @@ import kotlinx.coroutines.sync.withLock
 object ServerAvailabilityManager {
     
     /**
-     * List of production server IPs in order of priority.
+     * Production server configuration.
+     * Each entry contains the full base URL for a server.
      * The manager will try servers in this order until one responds.
      */
-    private val PRODUCTION_SERVERS = listOf(
-        "80.225.83.90",
-        "158.180.228.188"
-    )
+    private data class ServerConfig(val baseUrl: String)
     
-    /**
-     * Port for the backend API.
-     */
-    private const val API_PORT = 8080
+    private val PRODUCTION_SERVERS = listOf(
+        ServerConfig("http://80.225.83.90:8080"),
+        ServerConfig("http://158.180.228.188:8080"),
+        ServerConfig("https://janusleaf.onrender.com")
+    )
     
     /**
      * Timeout for health checks (shorter than regular API calls).
@@ -86,18 +85,17 @@ object ServerAvailabilityManager {
             }
             
             // Try each server in order
-            for (serverIp in PRODUCTION_SERVERS) {
-                val serverUrl = "http://$serverIp:$API_PORT"
-                if (isServerAvailable(httpClient, serverUrl)) {
-                    Napier.i("Server available: $serverUrl", tag = "ServerAvailability")
-                    cachedServerUrl = serverUrl
+            for (server in PRODUCTION_SERVERS) {
+                if (isServerAvailable(httpClient, server.baseUrl)) {
+                    Napier.i("Server available: ${server.baseUrl}", tag = "ServerAvailability")
+                    cachedServerUrl = server.baseUrl
                     lastHealthCheckTime = currentTimeMillis()
-                    return@withLock serverUrl
+                    return@withLock server.baseUrl
                 }
             }
             
             // If no server responds, use the first one and hope for the best
-            val fallbackUrl = "http://${PRODUCTION_SERVERS.first()}:$API_PORT"
+            val fallbackUrl = PRODUCTION_SERVERS.first().baseUrl
             Napier.w("No server responded to health check, using fallback: $fallbackUrl", tag = "ServerAvailability")
             cachedServerUrl = fallbackUrl
             lastHealthCheckTime = currentTimeMillis()
@@ -114,7 +112,7 @@ object ServerAvailabilityManager {
      * @return The cached or primary server URL
      */
     fun getProductionUrl(): String {
-        return cachedServerUrl ?: "http://${PRODUCTION_SERVERS.first()}:$API_PORT"
+        return cachedServerUrl ?: PRODUCTION_SERVERS.first().baseUrl
     }
     
     /**
