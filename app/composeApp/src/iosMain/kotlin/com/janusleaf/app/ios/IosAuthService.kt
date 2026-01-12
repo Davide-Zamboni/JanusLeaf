@@ -2,14 +2,18 @@ package com.janusleaf.app.ios
 
 import com.janusleaf.app.data.local.IosSecureTokenStorage
 import com.janusleaf.app.data.remote.AuthApiService
+import com.janusleaf.app.data.remote.ServerAvailabilityManager
 import com.janusleaf.app.data.remote.createApiHttpClient
+import com.janusleaf.app.data.remote.getAvailableBaseUrl
 import com.janusleaf.app.data.remote.getPlatformBaseUrl
 import com.janusleaf.app.data.repository.AuthRepositoryImpl
+import com.janusleaf.app.domain.model.AuthError
 import com.janusleaf.app.domain.model.AuthResult
 import com.janusleaf.app.domain.model.User
 import com.janusleaf.app.domain.repository.AuthRepository
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,15 +25,23 @@ import kotlinx.coroutines.launch
 /**
  * iOS-friendly authentication service.
  * This class provides a simple API for SwiftUI to interact with.
+ * 
+ * In production mode, automatically checks server availability and
+ * fails over between production servers if needed.
  */
 class IosAuthService {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
-    private val baseUrl = getPlatformBaseUrl()
     private val tokenStorage = IosSecureTokenStorage()
     private val httpClient = createApiHttpClient()
-    private val apiService = AuthApiService(httpClient, baseUrl)
-    private val repository: AuthRepository = AuthRepositoryImpl(apiService, tokenStorage)
+    
+    // Use sync URL initially, will be updated after availability check
+    @Volatile
+    private var currentBaseUrl = getPlatformBaseUrl()
+    
+    // Late-initialized services that will be recreated with new URL if needed
+    private var apiService = AuthApiService(httpClient, currentBaseUrl)
+    private var repository: AuthRepository = AuthRepositoryImpl(apiService, tokenStorage)
     
     // Observable state for SwiftUI
     private val _isLoading = MutableStateFlow(false)
@@ -55,11 +67,43 @@ class IosAuthService {
         Napier.base(DebugAntilog())
         Napier.i("========================================", tag = "iOS")
         Napier.i("IosAuthService initialized", tag = "iOS")
-        Napier.i("Base URL: $baseUrl", tag = "iOS")
+        Napier.i("Initial Base URL: $currentBaseUrl", tag = "iOS")
         Napier.i("========================================", tag = "iOS")
         
-        // Check initial auth state
-        checkAuthState()
+        // Check server availability and then auth state
+        scope.launch {
+            checkServerAvailability()
+            checkAuthState()
+        }
+    }
+    
+    /**
+     * Check server availability and update the base URL if needed.
+     * This is called at startup and can be called again if network errors occur.
+     */
+    private suspend fun checkServerAvailability() {
+        try {
+            val availableUrl = getAvailableBaseUrl(httpClient)
+            if (availableUrl != currentBaseUrl) {
+                Napier.i("Updating base URL from $currentBaseUrl to $availableUrl", tag = "iOS")
+                currentBaseUrl = availableUrl
+                // Recreate services with new URL
+                apiService = AuthApiService(httpClient, currentBaseUrl)
+                repository = AuthRepositoryImpl(apiService, tokenStorage)
+            }
+            Napier.i("Using server: $currentBaseUrl", tag = "iOS")
+        } catch (e: Exception) {
+            Napier.e("Failed to check server availability: ${e.message}", e, tag = "iOS")
+        }
+    }
+    
+    /**
+     * Handle network error by invalidating server cache and retrying.
+     * Call this when a network error occurs to try the failover server.
+     */
+    private suspend fun handleNetworkError() {
+        ServerAvailabilityManager.reportServerFailure(currentBaseUrl)
+        checkServerAvailability()
     }
     
     /**
@@ -68,28 +112,36 @@ class IosAuthService {
      */
     fun checkAuthState() {
         scope.launch {
-            try {
-                val authenticated = repository.isAuthenticated()
-                _isAuthenticated.value = authenticated
-                Napier.d("Auth state checked: $authenticated", tag = "iOS")
-                
-                // If authenticated, fetch user profile
-                if (authenticated) {
-                    when (val result = repository.getCurrentUser()) {
-                        is AuthResult.Success -> {
-                            _currentUser.value = result.data
-                            Napier.d("Fetched user on auth check: ${result.data.username}", tag = "iOS")
-                        }
-                        is AuthResult.Error -> {
-                            Napier.e("Failed to fetch user on auth check: ${result.error}", tag = "iOS")
-                        }
-                        is AuthResult.Loading -> {}
+            checkAuthStateInternal()
+        }
+    }
+    
+    private suspend fun checkAuthStateInternal() {
+        try {
+            val authenticated = repository.isAuthenticated()
+            _isAuthenticated.value = authenticated
+            Napier.d("Auth state checked: $authenticated", tag = "iOS")
+            
+            // If authenticated, fetch user profile
+            if (authenticated) {
+                when (val result = repository.getCurrentUser()) {
+                    is AuthResult.Success -> {
+                        _currentUser.value = result.data
+                        Napier.d("Fetched user on auth check: ${result.data.username}", tag = "iOS")
                     }
+                    is AuthResult.Error -> {
+                        // On network error, try failover
+                        if (result.error is AuthError.NetworkError) {
+                            handleNetworkError()
+                        }
+                        Napier.e("Failed to fetch user on auth check: ${result.error}", tag = "iOS")
+                    }
+                    is AuthResult.Loading -> {}
                 }
-            } catch (e: Exception) {
-                Napier.e("Error checking auth state: ${e.message}", e, tag = "iOS")
-                _isAuthenticated.value = false
             }
+        } catch (e: Exception) {
+            Napier.e("Error checking auth state: ${e.message}", e, tag = "iOS")
+            _isAuthenticated.value = false
         }
     }
     
@@ -111,16 +163,27 @@ class IosAuthService {
             _errorMessage.value = null
             
             try {
-                when (val result = repository.login(email, password)) {
+                val result = repository.login(email, password)
+                
+                // Handle network error with failover retry
+                val finalResult = if (result is AuthResult.Error && result.error is AuthError.NetworkError) {
+                    Napier.w("Login failed with network error, trying failover...", tag = "iOS")
+                    handleNetworkError()
+                    repository.login(email, password) // Retry with new server
+                } else {
+                    result
+                }
+                
+                when (finalResult) {
                     is AuthResult.Success -> {
-                        _currentUser.value = result.data.user
+                        _currentUser.value = finalResult.data.user
                         _isAuthenticated.value = true
                         _isLoading.value = false
-                        Napier.d("Login successful: ${result.data.user.email}", tag = "iOS")
+                        Napier.d("Login successful: ${finalResult.data.user.email}", tag = "iOS")
                         onSuccess()
                     }
                     is AuthResult.Error -> {
-                        val message = result.error.toUserMessage()
+                        val message = finalResult.error.toUserMessage()
                         _errorMessage.value = message
                         _isLoading.value = false
                         Napier.e("Login failed: $message", tag = "iOS")
@@ -160,16 +223,27 @@ class IosAuthService {
             _errorMessage.value = null
             
             try {
-                when (val result = repository.register(email, username, password)) {
+                val result = repository.register(email, username, password)
+                
+                // Handle network error with failover retry
+                val finalResult = if (result is AuthResult.Error && result.error is AuthError.NetworkError) {
+                    Napier.w("Registration failed with network error, trying failover...", tag = "iOS")
+                    handleNetworkError()
+                    repository.register(email, username, password) // Retry with new server
+                } else {
+                    result
+                }
+                
+                when (finalResult) {
                     is AuthResult.Success -> {
-                        _currentUser.value = result.data.user
+                        _currentUser.value = finalResult.data.user
                         _isAuthenticated.value = true
                         _isLoading.value = false
-                        Napier.d("Registration successful: ${result.data.user.email}", tag = "iOS")
+                        Napier.d("Registration successful: ${finalResult.data.user.email}", tag = "iOS")
                         onSuccess()
                     }
                     is AuthResult.Error -> {
-                        val message = result.error.toUserMessage()
+                        val message = finalResult.error.toUserMessage()
                         _errorMessage.value = message
                         _isLoading.value = false
                         Napier.e("Registration failed: $message", tag = "iOS")
