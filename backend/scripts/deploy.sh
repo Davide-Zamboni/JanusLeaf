@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 ORACLE_IP="${1:-}"
-SSH_KEY="${2:-$BACKEND_DIR/secrets/oracle-ssh.key}"
+SSH_KEY="${SSH_KEY:-${2:-$BACKEND_DIR/secrets/oracle-ssh-1.key}}"
 SSH_USER="${SSH_USER:-opc}"
 REMOTE_DIR="/home/${SSH_USER}/janusleaf"
 
@@ -34,6 +34,7 @@ if [ -z "$ORACLE_IP" ]; then
     echo "  ./scripts/deploy.sh 158.180.228.188 ~/.ssh/oracle-key.pem"
     echo ""
     echo "Environment variables:"
+    echo "  SSH_KEY  - Path to SSH private key"
     echo "  SSH_USER - Remote user (default: opc for Oracle Linux)"
     exit 1
 fi
