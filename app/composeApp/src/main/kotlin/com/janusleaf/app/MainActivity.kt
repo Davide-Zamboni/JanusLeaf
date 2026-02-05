@@ -30,7 +30,7 @@ import com.janusleaf.app.ui.navigation.entries.moodInsightsEntry
 import com.janusleaf.app.ui.navigation.entries.profileEntry
 import com.janusleaf.app.ui.navigation.entries.welcomeEntry
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
 import org.koin.compose.koinInject

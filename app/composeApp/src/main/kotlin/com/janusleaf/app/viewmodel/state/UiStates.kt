@@ -3,14 +3,6 @@ package com.janusleaf.app.viewmodel.state
 import com.janusleaf.app.domain.model.InspirationalQuote
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalPreview
-import com.janusleaf.app.domain.model.User
-
-data class AuthUiState(
-    val isLoading: Boolean = false,
-    val isAuthenticated: Boolean = false,
-    val errorMessage: String? = null,
-    val user: User? = null
-)
 
 data class JournalListUiState(
     val isLoading: Boolean = false,

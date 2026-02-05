@@ -14,6 +14,7 @@ import com.janusleaf.app.domain.repository.JournalRepository
 import com.janusleaf.app.domain.repository.TokenStorage
 import com.janusleaf.app.model.cache.InMemoryInspirationCache
 import com.janusleaf.app.model.cache.InMemoryJournalCache
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
 import kotlinx.coroutines.CoroutineScope
@@ -21,10 +22,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.LocalDate
 
 interface Cancellable {
@@ -57,12 +63,13 @@ object SharedModule {
     private val inspirationApi by lazy { InspirationApiService(httpClient, getPlatformBaseUrl()) }
     private val authRepository: AuthRepository by lazy { AuthRepositoryImpl(authApi, tokenStorage) }
     private val journalRepository: JournalRepository by lazy { JournalRepositoryImpl(journalApi, tokenStorage, authApi) }
+    private val authStore: AuthStore by lazy { AuthStore(authRepository, tokenStorage) }
     private val journalStore: JournalStore by lazy { JournalStore(journalRepository, InMemoryJournalCache()) }
     private val inspirationStore: InspirationStore by lazy {
         InspirationStore(inspirationApi, authApi, tokenStorage, InMemoryInspirationCache())
     }
 
-    fun createAuthService(): IosAuthService = IosAuthService(authRepository, tokenStorage)
+    fun createAuthService(): IosAuthService = IosAuthService(authStore)
 
     fun createJournalService(): IosJournalService = IosJournalService(journalStore)
 
@@ -70,32 +77,33 @@ object SharedModule {
 }
 
 class IosAuthService(
-    private val authRepository: AuthRepository,
-    private val tokenStorage: TokenStorage
+    private val authStore: AuthStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val isLoading = MutableStateFlow(false)
-    private val isAuthenticated = MutableStateFlow(false)
-    private val errorMessage = MutableStateFlow<String?>(null)
-    private val currentUser = MutableStateFlow<User?>(null)
-
-    init {
-        scope.launch {
-            isAuthenticated.value = tokenStorage.hasTokens()
-        }
-    }
 
     fun observeLoading(callback: (Boolean) -> Unit): Cancellable =
-        isLoading.asStateFlow().collectIn(scope, callback)
+        authStore.uiState
+            .map { it.isLoading }
+            .distinctUntilChanged()
+            .collectIn(scope, callback)
 
     fun observeAuthenticated(callback: (Boolean) -> Unit): Cancellable =
-        isAuthenticated.asStateFlow().collectIn(scope, callback)
+        authStore.uiState
+            .map { it.isAuthenticated }
+            .distinctUntilChanged()
+            .collectIn(scope, callback)
 
     fun observeError(callback: (String?) -> Unit): Cancellable =
-        errorMessage.asStateFlow().collectIn(scope, callback)
+        authStore.uiState
+            .map { it.errorMessage }
+            .distinctUntilChanged()
+            .collectIn(scope, callback)
 
     fun observeUser(callback: (User?) -> Unit): Cancellable =
-        currentUser.asStateFlow().collectIn(scope, callback)
+        authStore.uiState
+            .map { it.user }
+            .distinctUntilChanged()
+            .collectIn(scope, callback)
 
     fun login(
         email: String,
@@ -104,11 +112,10 @@ class IosAuthService(
         onError: (String) -> Unit
     ) {
         scope.launch {
-            isLoading.value = true
-            val result = withContext(Dispatchers.Default) {
-                authRepository.login(email, password)
+            val finalState = awaitAuthAction {
+                authStore.login(email, password)
             }
-            handleAuthResult(result, onSuccess, onError)
+            handleAuthOutcome(finalState, onSuccess, onError)
         }
     }
 
@@ -120,68 +127,55 @@ class IosAuthService(
         onError: (String) -> Unit
     ) {
         scope.launch {
-            isLoading.value = true
-            val result = withContext(Dispatchers.Default) {
-                authRepository.register(email, username, password)
+            val finalState = awaitAuthAction {
+                authStore.register(email, username, password)
             }
-            handleAuthResult(result, onSuccess, onError)
+            handleAuthOutcome(finalState, onSuccess, onError)
         }
     }
 
     fun logout(onSuccess: () -> Unit) {
         scope.launch {
-            val refreshToken = tokenStorage.getRefreshToken()
-            if (refreshToken != null) {
-                withContext(Dispatchers.Default) {
-                    authRepository.logout(refreshToken)
-                }
-            } else {
-                tokenStorage.clearTokens()
-            }
-            currentUser.value = null
-            isAuthenticated.value = false
+            authStore.logout()
             onSuccess()
         }
     }
 
     fun clearError() {
-        errorMessage.value = null
+        authStore.clearError()
     }
 
     fun isValidEmail(email: String): Boolean {
-        return email.contains("@") && email.contains(".") && email.length >= 5
+        return authStore.isValidEmail(email)
     }
 
     fun isValidPassword(password: String): Boolean {
-        return password.length >= 8
+        return authStore.isValidPassword(password)
     }
 
     fun isValidUsername(username: String): Boolean {
-        return username.length >= 3
+        return authStore.isValidUsername(username)
     }
 
-    private fun handleAuthResult(
-        result: AuthResult<AuthenticatedUser>,
+    private suspend fun awaitAuthAction(
+        action: () -> Unit
+    ) = withTimeoutOrNull(15_000) {
+        action()
+        authStore.uiState
+            .dropWhile { !it.isLoading }
+            .dropWhile { it.isLoading }
+            .first()
+    }
+
+    private fun handleAuthOutcome(
+        finalState: com.janusleaf.app.model.store.state.AuthUiState?,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        isLoading.value = false
-        when (result) {
-            is AuthResult.Success -> {
-                currentUser.value = result.data.user
-                isAuthenticated.value = true
-                errorMessage.value = null
-                onSuccess()
-            }
-            is AuthResult.Error -> {
-                val message = result.error.toUserMessage()
-                errorMessage.value = message
-                isAuthenticated.value = false
-                onError(message)
-            }
-            is AuthResult.Loading -> {
-                isLoading.value = true
-            }
+        when {
+            finalState == null -> onError("Authentication timed out. Please try again.")
+            finalState.isAuthenticated && finalState.errorMessage == null -> onSuccess()
+            else -> onError(finalState.errorMessage ?: "Authentication failed")
         }
     }
 }

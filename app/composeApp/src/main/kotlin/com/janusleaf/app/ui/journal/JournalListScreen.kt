@@ -47,7 +47,7 @@ import com.janusleaf.app.ui.util.formatEntryDate
 import com.janusleaf.app.ui.util.formatHeaderDate
 import com.janusleaf.app.ui.util.formatRelativeTime
 import com.janusleaf.app.ui.util.stripMarkdown
-import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.viewmodel.state.InspirationUiState
 import com.janusleaf.app.viewmodel.state.JournalListUiState
 import com.janusleaf.app.viewmodel.JournalListViewModel
