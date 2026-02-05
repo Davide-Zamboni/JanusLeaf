@@ -16,6 +16,17 @@ class AuthManager: ObservableObject {
     private var authCancellable: Cancellable?
     private var errorCancellable: Cancellable?
     private var userCancellable: Cancellable?
+
+    /// Static preview instance for SwiftUI previews
+    static var preview: AuthManager {
+        let manager = AuthManager()
+        manager.isAuthenticated = true
+        manager.currentUserEmail = "preview@example.com"
+        manager.currentUsername = "PreviewUser"
+        manager.isLoading = false
+        manager.errorMessage = nil
+        return manager
+    }
     
     init() {
         self.authService = SharedModule.shared.createAuthService()
