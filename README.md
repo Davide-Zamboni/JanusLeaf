@@ -12,7 +12,7 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 - 📝 **Write Daily Notes** - Journal your thoughts and experiences
 - 🤖 **AI Analysis** - Automatic mood scoring from 1-10
 - 📊 **Track Trends** - See your mood patterns over time
-- 📱 **Mobile First** - Android app with Kotlin
+- 📱 **Mobile First** - Kotlin Multiplatform app (Compose Android UI + SwiftUI iOS UI)
 
 ---
 
@@ -21,8 +21,8 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │                 │     │                 │     │                 │
-│  Android App    │────▶│  Spring Boot    │────▶│   PostgreSQL    │
-│  (Kotlin)       │     │  Backend        │     │                 │
+│  Mobile App     │────▶│  Spring Boot    │────▶│   PostgreSQL    │
+│  (KMP + SwiftUI)│     │  Backend        │     │                 │
 │                 │     │                 │     │                 │
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
                                 │
@@ -44,7 +44,7 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 | **Backend** | Spring Boot 3.x + Kotlin |
 | **Database** | PostgreSQL 16 |
 | **AI** | OpenAI GPT-4 |
-| **Mobile** | Kotlin (Android) |
+| **Mobile** | Kotlin Multiplatform + SwiftUI |
 | **Infrastructure** | Docker |
 
 ---
@@ -76,7 +76,7 @@ JanusLeaf/
 │   ├── docker-compose.dev.yml  # Dev database only
 │   ├── Dockerfile
 │   └── build.gradle.kts
-├── android/                    # Android application (coming soon)
+├── app/                        # KMP mobile app (Android UI + shared module)
 ├── docs/
 │   └── TODO.md
 └── README.md
@@ -95,7 +95,7 @@ JanusLeaf/
 ### Option 1: Full Stack with Docker
 
 ```bash
-cd JanusLeaf/backend
+cd backend
 
 # Set environment variables
 export OPENAI_API_KEY=your-key-here
@@ -108,7 +108,7 @@ docker-compose up -d
 ### Option 2: Local Development
 
 ```bash
-cd JanusLeaf/backend
+cd backend
 
 # Start only the database
 ./scripts/start-db.sh
@@ -180,15 +180,16 @@ See [backend/docs/](backend/docs/) for full API reference:
 | `POST` | `/api/auth/change-password` | Change password |
 | `POST` | `/api/auth/logout-all` | Logout all devices |
 
-**Notes (Requires JWT)**
+**Journal (Requires JWT)**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/notes` | List user's notes |
-| `POST` | `/api/notes` | Create new note |
-| `GET` | `/api/notes/{id}` | Get note by ID |
-| `PUT` | `/api/notes/{id}` | Update note |
-| `DELETE` | `/api/notes/{id}` | Delete note |
-| `GET` | `/api/stats` | Mood statistics |
+| `GET` | `/api/journal` | List user's entries |
+| `POST` | `/api/journal` | Create new entry |
+| `GET` | `/api/journal/{id}` | Get entry by ID |
+| `GET` | `/api/journal/range` | Get entries by date range |
+| `PATCH` | `/api/journal/{id}` | Update entry metadata |
+| `PATCH` | `/api/journal/{id}/body` | Update entry body |
+| `DELETE` | `/api/journal/{id}` | Delete entry |
 
 ---
 

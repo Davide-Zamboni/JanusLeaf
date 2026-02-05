@@ -1,6 +1,6 @@
 package com.janusleaf.app.data.remote
 
-import com.janusleaf.app.BuildConfig
+import com.janusleaf.app.JanusLeafBuildConfig
 import io.ktor.client.HttpClient
 
 /**
@@ -17,7 +17,7 @@ import io.ktor.client.HttpClient
  */
 object ApiConfig {
     // Use build-time configuration
-    val USE_PRODUCTION: Boolean = BuildConfig.USE_PRODUCTION
+    val USE_PRODUCTION: Boolean = JanusLeafBuildConfig.USE_PRODUCTION
     
     // Platform-specific base URLs are set via expect/actual
     // Default fallback for common code
