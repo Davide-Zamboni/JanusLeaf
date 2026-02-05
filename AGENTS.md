@@ -11,7 +11,7 @@
 - Use Gradle/Xcode build tasks as compile checks; use `run-ios.sh` as the functional smoke test.
 
 ## Which Validation To Run
-- Run only Android (`run-android.sh`) when changes are Android-only UI/DI/navigation/viewmodel code in `app/composeApp/src/androidMain`.
+- Run only Android (`run-android.sh`) when changes are Android-only UI/DI/navigation/viewmodel code in `app/composeApp/src/main`.
 - Run only iOS (`run-ios.sh`) when changes are iOS SwiftUI/app wiring only in `app/iosApp`.
 - Run both scripts when changes are in shared code (`app/shared`), networking/domain/data/repository logic, auth/session logic, or anything consumed by both apps.
 - Run both scripts before final sign-off on cross-platform refactors or package moves.

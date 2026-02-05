@@ -68,10 +68,12 @@ napier = { module = "io.github.aakira:napier", version.ref = "napier" }
 runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "runtime" }
 ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "ui" }
 ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "ui" }
+ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "ui" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
+androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization" }

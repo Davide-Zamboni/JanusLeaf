@@ -53,7 +53,7 @@ The app follows **Clean Architecture** principles. Shared domain/data lives in `
 ```
 app/
 ├── composeApp/                  # Android UI (Compose)
-│   └── src/androidMain/
+│   └── src/main/
 ├── shared/                      # KMP shared module (domain + data + backend)
 │   └── src/
 │       ├── commonMain/
