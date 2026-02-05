@@ -3,6 +3,7 @@ package com.janusleaf.app
 import android.app.Application
 import com.janusleaf.app.di.commonModule
 import com.janusleaf.app.di.platformModule
+import com.janusleaf.app.di.uiModule
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import org.koin.android.ext.koin.androidContext
@@ -26,7 +27,7 @@ class JanusLeafApplication : Application() {
         startKoin {
             androidLogger(Level.DEBUG)
             androidContext(this@JanusLeafApplication)
-            modules(platformModule, commonModule)
+            modules(platformModule, commonModule, uiModule)
         }
         
         Napier.d("JanusLeaf Application initialized", tag = "App")
