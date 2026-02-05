@@ -1,4 +1,4 @@
-package com.janusleaf.app.model.data.cache
+package com.janusleaf.app.model.cache
 
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalPreview

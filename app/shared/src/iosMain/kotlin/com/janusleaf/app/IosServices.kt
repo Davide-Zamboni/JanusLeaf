@@ -12,10 +12,10 @@ import com.janusleaf.app.domain.model.*
 import com.janusleaf.app.domain.repository.AuthRepository
 import com.janusleaf.app.domain.repository.JournalRepository
 import com.janusleaf.app.domain.repository.TokenStorage
-import com.janusleaf.app.model.data.cache.InMemoryInspirationCache
-import com.janusleaf.app.model.data.cache.InMemoryJournalCache
-import com.janusleaf.app.model.data.store.InspirationStore
-import com.janusleaf.app.model.data.store.JournalStore
+import com.janusleaf.app.model.cache.InMemoryInspirationCache
+import com.janusleaf.app.model.cache.InMemoryJournalCache
+import com.janusleaf.app.model.store.InspirationStore
+import com.janusleaf.app.model.store.JournalStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,7 +23,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate

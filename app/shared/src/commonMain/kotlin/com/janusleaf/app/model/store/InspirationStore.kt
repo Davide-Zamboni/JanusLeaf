@@ -1,6 +1,6 @@
-package com.janusleaf.app.model.data.store
+package com.janusleaf.app.model.store
 
-import com.janusleaf.app.model.data.cache.InspirationCache
+import com.janusleaf.app.model.cache.InspirationCache
 import com.janusleaf.app.data.remote.AuthApiService
 import com.janusleaf.app.data.remote.InspirationApiService
 import com.janusleaf.app.domain.model.AuthResult
