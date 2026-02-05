@@ -10,19 +10,18 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
-		AAAA000100010001 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010002 /* AuthManager.swift */; };
+		AAAA000100010001 /* AuthViewModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010002 /* AuthViewModelAdapter.swift */; };
 		AAAA000100010003 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010004 /* AuthView.swift */; };
 		AAAA000100010005 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010006 /* HomeView.swift */; };
 		AAAA000100010007 /* GlassTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA000100010008 /* GlassTextField.swift */; };
 		AAAA000100010009 /* GlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAA00010001000A /* GlassButton.swift */; };
-		BBBB000100010001 /* JournalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010002 /* JournalManager.swift */; };
+		BBBB000100010001 /* JournalViewModelAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010002 /* JournalViewModelAdapters.swift */; };
 		BBBB000100010003 /* JournalListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010004 /* JournalListView.swift */; };
 		BBBB000100010005 /* JournalEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010006 /* JournalEditorView.swift */; };
 		BBBB000100010007 /* LiquidGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB000100010008 /* LiquidGlassComponents.swift */; };
 		CCCC000100010001 /* AIMoodLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCC000100010002 /* AIMoodLoadingView.swift */; };
 		DDDD000100010001 /* MarkdownTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010002 /* MarkdownTextEditor.swift */; };
 		DDDD000100010003 /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDD000100010004 /* MarkdownRenderer.swift */; };
-		EEEE000100010001 /* InspirationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE000100010002 /* InspirationManager.swift */; };
 		EEEE000100010003 /* InspirationalQuoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEE000100010004 /* InspirationalQuoteView.swift */; };
 		FFFF000100010001 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFF000100010002 /* MainTabView.swift */; };
 		FFFF000100010003 /* MoodInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFF000100010004 /* MoodInsightsView.swift */; };
@@ -70,19 +69,18 @@
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* JanusLeaf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JanusLeaf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AAAA000100010002 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		AAAA000100010002 /* AuthViewModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelAdapter.swift; sourceTree = "<group>"; };
 		AAAA000100010004 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		AAAA000100010006 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		AAAA000100010008 /* GlassTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassTextField.swift; sourceTree = "<group>"; };
 		AAAA00010001000A /* GlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButton.swift; sourceTree = "<group>"; };
-		BBBB000100010002 /* JournalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalManager.swift; sourceTree = "<group>"; };
+		BBBB000100010002 /* JournalViewModelAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalViewModelAdapters.swift; sourceTree = "<group>"; };
 		BBBB000100010004 /* JournalListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalListView.swift; sourceTree = "<group>"; };
 		BBBB000100010006 /* JournalEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalEditorView.swift; sourceTree = "<group>"; };
 		BBBB000100010008 /* LiquidGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassComponents.swift; sourceTree = "<group>"; };
 		CCCC000100010002 /* AIMoodLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMoodLoadingView.swift; sourceTree = "<group>"; };
 		DDDD000100010002 /* MarkdownTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextEditor.swift; sourceTree = "<group>"; };
 		DDDD000100010004 /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
-		EEEE000100010002 /* InspirationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspirationManager.swift; sourceTree = "<group>"; };
 		EEEE000100010004 /* InspirationalQuoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspirationalQuoteView.swift; sourceTree = "<group>"; };
 		FFFF000100010002 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		FFFF000100010004 /* MoodInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodInsightsView.swift; sourceTree = "<group>"; };
@@ -129,9 +127,8 @@
 			children = (
 				7555FF82242A565900829871 /* ContentView.swift */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
-				AAAA000100010002 /* AuthManager.swift */,
-				BBBB000100010002 /* JournalManager.swift */,
-				EEEE000100010002 /* InspirationManager.swift */,
+				AAAA000100010002 /* AuthViewModelAdapter.swift */,
+				BBBB000100010002 /* JournalViewModelAdapters.swift */,
 				AAAA00010001000B /* Views */,
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
@@ -243,19 +240,18 @@
 			files = (
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
-				AAAA000100010001 /* AuthManager.swift in Sources */,
+				AAAA000100010001 /* AuthViewModelAdapter.swift in Sources */,
 				AAAA000100010003 /* AuthView.swift in Sources */,
 				AAAA000100010005 /* HomeView.swift in Sources */,
 				AAAA000100010007 /* GlassTextField.swift in Sources */,
 				AAAA000100010009 /* GlassButton.swift in Sources */,
-				BBBB000100010001 /* JournalManager.swift in Sources */,
+				BBBB000100010001 /* JournalViewModelAdapters.swift in Sources */,
 				BBBB000100010003 /* JournalListView.swift in Sources */,
 				BBBB000100010005 /* JournalEditorView.swift in Sources */,
 				BBBB000100010007 /* LiquidGlassComponents.swift in Sources */,
 				CCCC000100010001 /* AIMoodLoadingView.swift in Sources */,
 				DDDD000100010001 /* MarkdownTextEditor.swift in Sources */,
 				DDDD000100010003 /* MarkdownRenderer.swift in Sources */,
-				EEEE000100010001 /* InspirationManager.swift in Sources */,
 				EEEE000100010003 /* InspirationalQuoteView.swift in Sources */,
 				FFFF000100010001 /* MainTabView.swift in Sources */,
 				FFFF000100010003 /* MoodInsightsView.swift in Sources */,

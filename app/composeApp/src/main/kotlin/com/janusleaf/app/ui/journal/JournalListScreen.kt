@@ -48,9 +48,9 @@ import com.janusleaf.app.ui.util.formatHeaderDate
 import com.janusleaf.app.ui.util.formatRelativeTime
 import com.janusleaf.app.ui.util.stripMarkdown
 import com.janusleaf.app.model.store.state.AuthUiState
-import com.janusleaf.app.viewmodel.state.InspirationUiState
-import com.janusleaf.app.viewmodel.state.JournalListUiState
-import com.janusleaf.app.viewmodel.JournalListViewModel
+import com.janusleaf.app.presentation.state.InspirationUiState
+import com.janusleaf.app.presentation.state.JournalListUiState
+import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

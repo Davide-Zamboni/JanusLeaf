@@ -1,13 +1,12 @@
-package com.janusleaf.app.viewmodel
+package com.janusleaf.app.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
-import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.model.store.AuthStore
+import com.janusleaf.app.model.store.state.AuthUiState
 import kotlinx.coroutines.flow.StateFlow
 
 class WelcomeViewModel(
     private val authStore: AuthStore
-) : ViewModel() {
+) : KmpViewModel() {
 
     val authState: StateFlow<AuthUiState> = authStore.uiState
 

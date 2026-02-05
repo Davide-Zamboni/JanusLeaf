@@ -43,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.ui.util.stripMarkdown
-import com.janusleaf.app.viewmodel.JournalEditorViewModel
+import com.janusleaf.app.presentation.viewmodel.JournalEditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

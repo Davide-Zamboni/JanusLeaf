@@ -2,24 +2,22 @@ import SwiftUI
 
 @available(iOS 17.0, *)
 struct ContentView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var journalManager = JournalManager()
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
     
     var body: some View {
         Group {
-            if authManager.isAuthenticated {
+            if authViewModel.isAuthenticated {
                 MainTabView()
-                    .environmentObject(journalManager)
             } else {
                 AuthView()
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
+        .animation(.easeInOut(duration: 0.3), value: authViewModel.isAuthenticated)
     }
 }
 
 @available(iOS 17.0, *)
 #Preview {
     ContentView()
-        .environmentObject(AuthManager())
+        .environmentObject(AuthViewModelAdapter())
 }

@@ -39,7 +39,7 @@ import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.domain.model.User
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.viewmodel.ProfileViewModel
+import com.janusleaf.app.presentation.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

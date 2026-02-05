@@ -1,4 +1,4 @@
-package com.janusleaf.app.viewmodel.state
+package com.janusleaf.app.presentation.state
 
 import com.janusleaf.app.domain.model.InspirationalQuote
 import com.janusleaf.app.domain.model.Journal

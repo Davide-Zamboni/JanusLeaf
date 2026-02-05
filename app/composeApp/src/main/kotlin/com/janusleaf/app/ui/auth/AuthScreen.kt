@@ -45,10 +45,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.model.store.state.AuthUiState
-import com.janusleaf.app.viewmodel.AuthScreenViewModel
+import com.janusleaf.app.presentation.viewmodel.AuthViewModel
 
 @Composable
-fun AuthScreen(viewModel: AuthScreenViewModel) {
+fun AuthScreen(viewModel: AuthViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     AuthScreenContent(

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AuthView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
     
     @State private var email = ""
     @State private var password = ""
@@ -93,7 +93,7 @@ struct AuthView: View {
     private var glassFormCard: some View {
         VStack(spacing: 16) {
             // Error message
-            if let error = authManager.errorMessage {
+            if let error = authViewModel.errorMessage {
                 errorBanner(message: error)
             }
             
@@ -106,7 +106,7 @@ struct AuthView: View {
                     keyboardType: .emailAddress
                 )
                 
-                if !email.isEmpty && !authManager.isValidEmail(email) {
+                if !email.isEmpty && !authViewModel.isValidEmail(email) {
                     ValidationHint(message: "Enter a valid email address")
                 }
             }
@@ -120,7 +120,7 @@ struct AuthView: View {
                         icon: "person.fill"
                     )
                     
-                    if !username.isEmpty && !authManager.isValidUsername(username) {
+                    if !username.isEmpty && !authViewModel.isValidUsername(username) {
                         ValidationHint(message: "Username must be 2-50 characters")
                     }
                 }
@@ -141,7 +141,7 @@ struct AuthView: View {
                     trailingAction: { showPassword.toggle() }
                 )
                 
-                if !password.isEmpty && !authManager.isValidPassword(password) {
+                if !password.isEmpty && !authViewModel.isValidPassword(password) {
                     ValidationHint(message: "Password must be at least 8 characters")
                 }
             }
@@ -173,7 +173,7 @@ struct AuthView: View {
             // Submit button
             GlassButton(
                 title: isRegistering ? "Create Account" : "Sign In",
-                isLoading: authManager.isLoading,
+                isLoading: authViewModel.isLoading,
                 isEnabled: isFormValid,
                 action: submit
             )
@@ -210,7 +210,7 @@ struct AuthView: View {
             
             Spacer()
             
-            Button(action: { authManager.clearError() }) {
+            Button(action: { authViewModel.clearError() }) {
                 Image(systemName: "xmark")
                     .foregroundColor(.white.opacity(0.7))
             }
@@ -237,7 +237,7 @@ struct AuthView: View {
             Button(action: {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                     isRegistering.toggle()
-                    authManager.clearError()
+                    authViewModel.clearError()
                     password = ""
                     confirmPassword = ""
                 }
@@ -251,11 +251,11 @@ struct AuthView: View {
     
     // MARK: - Validation
     private var isFormValid: Bool {
-        let emailValid = authManager.isValidEmail(email)
-        let passwordValid = authManager.isValidPassword(password)
+        let emailValid = authViewModel.isValidEmail(email)
+        let passwordValid = authViewModel.isValidPassword(password)
         
         if isRegistering {
-            let usernameValid = authManager.isValidUsername(username)
+            let usernameValid = authViewModel.isValidUsername(username)
             let passwordsMatch = password == confirmPassword
             return emailValid && passwordValid && usernameValid && passwordsMatch && !confirmPassword.isEmpty
         }
@@ -266,9 +266,9 @@ struct AuthView: View {
     // MARK: - Submit
     private func submit() {
         if isRegistering {
-            authManager.register(email: email, username: username, password: password)
+            authViewModel.register(email: email, username: username, password: password)
         } else {
-            authManager.login(email: email, password: password)
+            authViewModel.login(email: email, password: password)
         }
     }
 }
@@ -374,5 +374,5 @@ struct ValidationHint: View {
 
 #Preview {
     AuthView()
-        .environmentObject(AuthManager())
+        .environmentObject(AuthViewModelAdapter())
 }

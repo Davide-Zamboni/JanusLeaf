@@ -3,10 +3,11 @@ import Shared
 
 @available(iOS 17.0, *)
 struct JournalEditorView: View {
-    @EnvironmentObject var journalManager: JournalManager
     @Environment(\.dismiss) var dismiss
     
     let entryId: String
+
+    @StateObject private var editorViewModel: JournalEditorViewModelAdapter
     
     @State private var title: String = ""
     @State private var bodyText: String = ""
@@ -29,6 +30,11 @@ struct JournalEditorView: View {
     
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
+
+    init(entryId: String) {
+        self.entryId = entryId
+        _editorViewModel = StateObject(wrappedValue: JournalEditorViewModelAdapter())
+    }
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -55,17 +61,17 @@ struct JournalEditorView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { loadEntry() }
-        .onDisappear { journalManager.clearCurrentEntry() }
+        .onDisappear { editorViewModel.clearCurrentEntry() }
         .confirmationDialog("Delete Entry", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) { deleteEntry() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This entry will be permanently deleted.")
         }
-        .onChange(of: journalManager.errorMessage) { _, error in
+        .onChange(of: editorViewModel.errorMessage) { _, error in
             if error != nil {
                 handleSaveError()
-                journalManager.clearError()
+                editorViewModel.clearError()
             } else {
                 // Success - reset failure count
                 consecutiveFailures = 0
@@ -214,7 +220,7 @@ struct JournalEditorView: View {
                     showStrikethrough: showStrikethrough
                 ) { newValue in
                     hasUnsavedBodyChanges = true
-                    journalManager.updateBody(newValue, for: entryId)
+                    editorViewModel.updateBody(newValue, for: entryId)
                 }
             }
             .padding(16)
@@ -247,22 +253,22 @@ struct JournalEditorView: View {
         
         // Save title first if changed, then handle body changes
         if hasTitleChanges {
-            journalManager.updateTitle(title, for: entryId) { _ in
+            editorViewModel.updateTitle(title, for: entryId) { _ in
                 if hasUnsavedBodyChanges {
-                    journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+                    editorViewModel.forceSave(entryId: entryId) { _ in dismiss() }
                 } else {
                     dismiss()
                 }
             }
         } else if hasUnsavedBodyChanges {
-            journalManager.forceSave(entryId: entryId) { _ in dismiss() }
+            editorViewModel.forceSave(entryId: entryId) { _ in dismiss() }
         } else {
             dismiss()
         }
     }
     
     private func loadEntry() {
-        journalManager.getEntry(id: entryId) { journal in
+        editorViewModel.loadEntry(id: entryId) { journal in
             guard let journal = journal else { return }
             self.title = journal.title
             self.originalTitle = journal.title
@@ -276,7 +282,7 @@ struct JournalEditorView: View {
     
     private func saveTitle() {
         guard !title.isEmpty, title != originalTitle else { return }
-        journalManager.updateTitle(title, for: entryId) { success in
+        editorViewModel.updateTitle(title, for: entryId) { success in
             if success {
                 self.originalTitle = self.title
             }
@@ -284,7 +290,7 @@ struct JournalEditorView: View {
     }
     
     private func deleteEntry() {
-        journalManager.deleteEntry(id: entryId) { success in
+        editorViewModel.deleteEntry(id: entryId) { success in
             if success { dismiss() }
         }
     }
@@ -300,6 +306,5 @@ struct JournalEditorView: View {
 #Preview {
     NavigationStack {
         JournalEditorView(entryId: "test")
-            .environmentObject(JournalManager())
     }
 }

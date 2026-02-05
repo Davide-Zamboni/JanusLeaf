@@ -4,7 +4,7 @@ import Shared
 @main
 @available(iOS 17.0, *)
 struct JanusLeafApp: App {
-    @StateObject private var authManager = AuthManager()
+    @StateObject private var authViewModel = AuthViewModelAdapter()
     
     init() {
         _ = SharedModule.shared
@@ -14,7 +14,7 @@ struct JanusLeafApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authManager)
+                .environmentObject(authViewModel)
         }
     }
 }

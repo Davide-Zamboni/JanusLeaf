@@ -81,8 +81,8 @@ enum MoodHelpers {
 
 @available(iOS 17.0, *)
 struct MoodInsightsView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var journalManager: JournalManager
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @StateObject private var moodInsightsViewModel = MoodInsightsViewModelAdapter()
     
     @State private var selectedPeriod: TimePeriod = .sixMonths
     @State private var moodData: [MoodDataPoint] = []
@@ -127,13 +127,14 @@ struct MoodInsightsView: View {
         .ignoresSafeArea()
         .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
             Button("Sign Out", role: .destructive) {
-                authManager.logout()
+                authViewModel.logout()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Are you sure you want to sign out?")
         }
         .onAppear {
+            moodInsightsViewModel.loadEntries()
             loadMoodData()
             withAnimation(.easeOut(duration: 0.8).delay(0.3)) {
                 animateChart = true
@@ -148,7 +149,7 @@ struct MoodInsightsView: View {
                 animateChart = true
             }
         }
-        .onChange(of: journalManager.entries) { _, _ in
+        .onChange(of: moodInsightsViewModel.entries) { _, _ in
             loadMoodData()
         }
     }
@@ -474,7 +475,7 @@ struct MoodInsightsView: View {
         let startDate = calendar.date(byAdding: .day, value: -selectedPeriod.days, to: endDate) ?? endDate
         
         // Convert journal entries to mood data points
-        moodData = journalManager.entries.compactMap { entry in
+        moodData = moodInsightsViewModel.entries.compactMap { entry in
             guard let moodScore = entry.moodScore else { return nil }
             
             // Convert Kotlin LocalDate to Swift Date
@@ -837,5 +838,5 @@ struct MoodCategoryRow: View {
 @available(iOS 17.0, *)
 #Preview {
     MoodInsightsView()
-        .environmentObject(JournalManager())
+        .environmentObject(AuthViewModelAdapter())
 }

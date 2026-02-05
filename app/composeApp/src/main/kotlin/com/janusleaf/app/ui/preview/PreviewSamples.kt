@@ -5,8 +5,8 @@ import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.domain.model.User
 import com.janusleaf.app.model.store.state.AuthUiState
-import com.janusleaf.app.viewmodel.state.InspirationUiState
-import com.janusleaf.app.viewmodel.state.JournalListUiState
+import com.janusleaf.app.presentation.state.InspirationUiState
+import com.janusleaf.app.presentation.state.JournalListUiState
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate

@@ -3,24 +3,24 @@ import SwiftUI
 // MARK: - Inspirational Quote Card
 
 struct InspirationalQuoteView: View {
-    @ObservedObject var inspirationManager: InspirationManager
+    @ObservedObject var journalListViewModel: JournalListViewModelAdapter
     
     var body: some View {
         VStack(spacing: 0) {
-            if inspirationManager.isLoading && inspirationManager.quote == nil && !inspirationManager.isNotFound {
+            if journalListViewModel.inspirationIsLoading && journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsNotFound {
                 InspirationLoadingView()
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } else if inspirationManager.isNotFound {
+            } else if journalListViewModel.inspirationIsNotFound {
                 InspirationPendingView()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.9)),
                         removal: .opacity
                     ))
-            } else if let quote = inspirationManager.quote {
+            } else if let quote = journalListViewModel.inspirationQuote {
                 QuoteContentView(
                     quote: quote.quote,
                     tags: quote.tags.map { $0 },
-                    generatedInfo: inspirationManager.formattedGeneratedDate()
+                    generatedInfo: journalListViewModel.formattedGeneratedDate()
                 )
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .move(edge: .bottom)),
@@ -28,9 +28,9 @@ struct InspirationalQuoteView: View {
                 ))
             }
         }
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: inspirationManager.quote?.id)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: inspirationManager.isNotFound)
-        .animation(.easeInOut(duration: 0.3), value: inspirationManager.isLoading)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: journalListViewModel.inspirationQuote?.id)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: journalListViewModel.inspirationIsNotFound)
+        .animation(.easeInOut(duration: 0.3), value: journalListViewModel.inspirationIsLoading)
     }
 }
 

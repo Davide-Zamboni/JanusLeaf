@@ -4,8 +4,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.janusleaf.app.ui.navigation.JournalListNavKey
 import com.janusleaf.app.ui.journal.JournalListScreen
-import com.janusleaf.app.viewmodel.JournalListViewModel
-import org.koin.androidx.compose.koinViewModel
+import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 
 fun EntryProviderScope<NavKey>.journalListEntry(
     onEntryClick: (String) -> Unit,
@@ -14,7 +13,7 @@ fun EntryProviderScope<NavKey>.journalListEntry(
     onNavigateToInsights: () -> Unit
 ) {
     entry<JournalListNavKey> {
-        val viewModel: JournalListViewModel = koinViewModel()
+        val viewModel: JournalListViewModel = rememberKmpViewModel()
         JournalListScreen(
             viewModel = viewModel,
             onEntryClick = onEntryClick,

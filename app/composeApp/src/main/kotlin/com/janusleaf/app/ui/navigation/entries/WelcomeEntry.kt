@@ -6,12 +6,11 @@ import com.janusleaf.app.ui.navigation.WelcomeNavKey
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.home.WelcomeScreen
-import com.janusleaf.app.viewmodel.WelcomeViewModel
-import org.koin.androidx.compose.koinViewModel
+import com.janusleaf.app.presentation.viewmodel.WelcomeViewModel
 
 fun EntryProviderScope<NavKey>.welcomeEntry() {
     entry<WelcomeNavKey> {
-        val viewModel: WelcomeViewModel = koinViewModel()
+        val viewModel: WelcomeViewModel = rememberKmpViewModel()
         val authState by viewModel.authState.collectAsStateWithLifecycle()
         WelcomeScreen(
             userEmail = authState.user?.email,
