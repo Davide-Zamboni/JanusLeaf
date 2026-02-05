@@ -30,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
@@ -56,12 +57,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.domain.model.JournalPreview
+import com.janusleaf.app.ui.components.MainBottomBar
+import com.janusleaf.app.ui.components.MainTab
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.ui.util.formatAxisDate
 import com.janusleaf.app.ui.util.formatShortDate
 import com.janusleaf.app.ui.util.moodColor
-import com.janusleaf.app.ui.viewmodel.JournalViewModel
+import com.janusleaf.app.viewmodel.MoodInsightsViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -87,18 +90,32 @@ private data class MoodDataPoint(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoodInsightsScreen(
-    journalViewModel: JournalViewModel,
-    onProfileClick: () -> Unit
+    viewModel: MoodInsightsViewModel,
+    onProfileClick: () -> Unit,
+    onNavigateToJournal: () -> Unit,
+    onNavigateToInsights: () -> Unit
 ) {
-    val journalState by journalViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isPreview = LocalInspectionMode.current
     LaunchedEffect(Unit) {
-        if (!isPreview && journalState.entries.isEmpty()) {
-            journalViewModel.loadEntries()
+        if (!isPreview && uiState.entries.isEmpty()) {
+            viewModel.loadEntries()
         }
     }
 
-    MoodInsightsContent(entries = journalState.entries, onProfileClick = onProfileClick)
+    Scaffold(
+        bottomBar = {
+            MainBottomBar(
+                selectedTab = MainTab.Insights,
+                onSelectJournal = onNavigateToJournal,
+                onSelectInsights = onNavigateToInsights
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            MoodInsightsContent(entries = uiState.entries, onProfileClick = onProfileClick)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

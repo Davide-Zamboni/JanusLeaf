@@ -25,7 +25,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,17 +43,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.ui.util.stripMarkdown
-import com.janusleaf.app.ui.viewmodel.JournalViewModel
+import com.janusleaf.app.viewmodel.JournalEditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JournalEditorScreen(
     entryId: String,
-    journalViewModel: JournalViewModel,
-    onBack: () -> Unit
+    viewModel: JournalEditorViewModel,
+    onBack: () -> Unit,
+    registerBackHandler: (handler: (() -> Unit)?) -> Unit = {}
 ) {
-    val journalState by journalViewModel.uiState.collectAsStateWithLifecycle()
-    val entry = journalState.currentEntry
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val entry = uiState.entry
 
     var title by rememberSaveable(entryId) { mutableStateOf("") }
     var body by rememberSaveable(entryId) { mutableStateOf("") }
@@ -62,7 +65,8 @@ fun JournalEditorScreen(
 
     LaunchedEffect(entryId) {
         if (!isPreview) {
-            journalViewModel.getEntry(entryId)
+            viewModel.bindEntry(entryId)
+            viewModel.loadEntry(entryId)
         }
     }
 
@@ -74,12 +78,29 @@ fun JournalEditorScreen(
         }
     }
 
+    val handleBack = {
+        val hasTitleChanges = title.isNotBlank() && title != originalTitle
+        if (hasTitleChanges) {
+            viewModel.updateTitle(entryId, title) { onBack() }
+        } else {
+            viewModel.forceSave(entryId) { onBack() }
+        }
+    }
+
+    SideEffect {
+        registerBackHandler(handleBack)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { registerBackHandler(null) }
+    }
+
     JournalEditorContent(
         title = title,
         onTitleChange = { title = it },
         onTitleBlur = {
             if (title.isNotBlank() && title != originalTitle) {
-                journalViewModel.updateTitle(entryId, title) { success ->
+                viewModel.updateTitle(entryId, title) { success ->
                     if (success) originalTitle = title
                 }
             }
@@ -87,22 +108,15 @@ fun JournalEditorScreen(
         body = body,
         onBodyChange = {
             body = it
-            journalViewModel.updateBody(entryId, it)
+            viewModel.updateBody(entryId, it)
         },
         previewMode = previewMode,
         onTogglePreview = { previewMode = !previewMode },
-        isSaving = journalState.isSaving,
-        errorMessage = journalState.errorMessage,
-        onBack = {
-            val hasTitleChanges = title.isNotBlank() && title != originalTitle
-            if (hasTitleChanges) {
-                journalViewModel.updateTitle(entryId, title) { onBack() }
-            } else {
-                journalViewModel.forceSave(entryId) { onBack() }
-            }
-        },
+        isSaving = uiState.isSaving,
+        errorMessage = uiState.errorMessage,
+        onBack = handleBack,
         onDelete = {
-            journalViewModel.deleteEntry(entryId) { success ->
+            viewModel.deleteEntry(entryId) { success ->
                 if (success) onBack()
             }
         },

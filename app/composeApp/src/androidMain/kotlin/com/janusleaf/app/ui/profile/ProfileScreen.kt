@@ -39,23 +39,21 @@ import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.domain.model.User
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.ui.viewmodel.AuthViewModel
-import com.janusleaf.app.ui.viewmodel.JournalViewModel
+import com.janusleaf.app.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    authViewModel: AuthViewModel,
-    journalViewModel: JournalViewModel,
+    viewModel: ProfileViewModel,
     onBack: () -> Unit
 ) {
-    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
-    val journalState by journalViewModel.uiState.collectAsStateWithLifecycle()
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
+    val entries by viewModel.entries.collectAsStateWithLifecycle()
 
     ProfileContent(
         user = authState.user,
-        entries = journalState.entries,
-        onSignOut = authViewModel::logout,
+        entries = entries,
+        onSignOut = viewModel::logout,
         onBack = onBack
     )
 }
