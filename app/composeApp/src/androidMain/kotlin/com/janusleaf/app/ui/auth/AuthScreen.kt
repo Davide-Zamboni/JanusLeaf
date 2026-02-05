@@ -44,21 +44,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.ui.viewmodel.AuthViewModel
-import com.janusleaf.app.ui.viewmodel.AuthUiState
+import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.viewmodel.AuthScreenViewModel
 
 @Composable
-fun AuthScreen(authViewModel: AuthViewModel) {
-    val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
+fun AuthScreen(viewModel: AuthScreenViewModel) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     AuthScreenContent(
         uiState = uiState,
-        isValidEmail = authViewModel::isValidEmail,
-        isValidPassword = authViewModel::isValidPassword,
-        isValidUsername = authViewModel::isValidUsername,
-        onLogin = authViewModel::login,
-        onRegister = authViewModel::register,
-        onClearError = authViewModel::clearError
+        isValidEmail = viewModel::isValidEmail,
+        isValidPassword = viewModel::isValidPassword,
+        isValidUsername = viewModel::isValidUsername,
+        onLogin = viewModel::login,
+        onRegister = viewModel::register,
+        onClearError = viewModel::clearError
     )
 }
 

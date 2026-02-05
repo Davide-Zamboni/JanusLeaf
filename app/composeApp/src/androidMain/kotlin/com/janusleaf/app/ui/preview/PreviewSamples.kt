@@ -4,9 +4,9 @@ import com.janusleaf.app.domain.model.InspirationalQuote
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.domain.model.User
-import com.janusleaf.app.ui.viewmodel.AuthUiState
-import com.janusleaf.app.ui.viewmodel.InspirationUiState
-import com.janusleaf.app.ui.viewmodel.JournalUiState
+import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.viewmodel.state.InspirationUiState
+import com.janusleaf.app.viewmodel.state.JournalListUiState
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -78,14 +78,12 @@ object PreviewSamples {
         user = null
     )
 
-    fun journalUiStateWithEntries(): JournalUiState = JournalUiState(
+    fun journalListUiStateWithEntries(): JournalListUiState = JournalListUiState(
         isLoading = false,
         errorMessage = null,
         entries = journalPreviewList(),
-        currentEntry = journal(),
         hasMore = true,
-        isSaving = false,
-        lastSavedAtEpochMillis = nowInstant.toEpochMilliseconds()
+        isCreatingEntry = false
     )
 
     fun inspirationUiStateWithQuote(): InspirationUiState = InspirationUiState(
