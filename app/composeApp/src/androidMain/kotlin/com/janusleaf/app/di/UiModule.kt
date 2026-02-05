@@ -1,12 +1,12 @@
 package com.janusleaf.app.di
 
-import com.janusleaf.app.model.cache.InMemoryInspirationCache
-import com.janusleaf.app.model.cache.InMemoryJournalCache
-import com.janusleaf.app.model.cache.InspirationCache
-import com.janusleaf.app.model.cache.JournalCache
-import com.janusleaf.app.model.store.AuthStore
-import com.janusleaf.app.model.store.InspirationStore
-import com.janusleaf.app.model.store.JournalStore
+import com.janusleaf.app.model.data.cache.InMemoryInspirationCache
+import com.janusleaf.app.model.data.cache.InMemoryJournalCache
+import com.janusleaf.app.model.data.cache.InspirationCache
+import com.janusleaf.app.model.data.cache.JournalCache
+import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.data.store.InspirationStore
+import com.janusleaf.app.model.data.store.JournalStore
 import com.janusleaf.app.viewmodel.AuthScreenViewModel
 import com.janusleaf.app.viewmodel.JournalEditorViewModel
 import com.janusleaf.app.viewmodel.JournalListViewModel

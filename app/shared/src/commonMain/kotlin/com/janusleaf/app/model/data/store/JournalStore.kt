@@ -1,6 +1,6 @@
-package com.janusleaf.app.model.store
+package com.janusleaf.app.model.data.store
 
-import com.janusleaf.app.model.cache.JournalCache
+import com.janusleaf.app.model.data.cache.JournalCache
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalBodyUpdate
 import com.janusleaf.app.domain.model.JournalPage
