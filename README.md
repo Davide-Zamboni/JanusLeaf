@@ -4,15 +4,20 @@
 
 JanusLeaf helps you track your daily moods by analyzing your journal entries. Write about your day, and AI gives you a score from 1-10 reflecting how positive your day was.
 
+<p align="center">
+  <img src="docs/Simulator Screenshot - iPhone 17 Pro - 2026-02-05 at 11.09.06.png" alt="JanusLeaf iOS App" width="300"/>
+</p>
+
 ---
 
 ## 🎯 Features
 
 - 🔐 **User Accounts** - Secure registration and JWT authentication
-- 📝 **Write Daily Notes** - Journal your thoughts and experiences
-- 🤖 **AI Analysis** - Automatic mood scoring from 1-10
-- 📊 **Track Trends** - See your mood patterns over time
-- 📱 **Mobile First** - Kotlin Multiplatform app (Compose Android UI + SwiftUI iOS UI)
+- 📝 **Daily Journal** - Write your thoughts with a rich markdown editor
+- 🤖 **AI Mood Analysis** - Automatic mood scoring from 1-10 (powered by OpenRouter)
+- 💡 **Personalized Inspiration** - AI-generated quotes based on your journal themes
+- 📊 **Mood Insights** - Visualize your mood patterns over time
+- 📱 **Native Mobile Apps** - iOS (SwiftUI) + Android (Compose) via Kotlin Multiplatform
 
 ---
 
@@ -20,32 +25,27 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│                 │     │                 │     │                 │
+│                 │     │  Oracle Cloud   │     │    Supabase     │
 │  Mobile App     │────▶│  Spring Boot    │────▶│   PostgreSQL    │
 │  (KMP + SwiftUI)│     │  Backend        │     │                 │
 │                 │     │                 │     │                 │
 └─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │                 │
-                       │   OpenAI API    │
-                       │   (GPT-4)       │
-                       │                 │
-                       └─────────────────┘
+                              │
+                              ▼
+                     ┌─────────────────┐
+                     │                 │
+                     │   OpenRouter    │
+                     │   (AI Models)   │
+                     │                 │
+                     └─────────────────┘
 ```
 
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Backend** | Spring Boot 3.x + Kotlin |
-| **Database** | PostgreSQL 16 |
-| **AI** | OpenAI GPT-4 |
-| **Mobile** | Kotlin Multiplatform + SwiftUI |
-| **Infrastructure** | Docker |
+| Component | Service |
+|-----------|---------|
+| **Backend** | Oracle Cloud Free Tier (2 instances for failover) |
+| **Database** | Supabase PostgreSQL |
+| **Fallback** | Render.com (auto-deploys from main branch) |
+| **AI** | OpenRouter API (Claude, GPT-4, etc.) |
 
 ---
 
@@ -53,34 +53,47 @@ JanusLeaf helps you track your daily moods by analyzing your journal entries. Wr
 
 ```
 JanusLeaf/
-├── backend/                    # Spring Boot application
-│   ├── src/
-│   │   ├── main/kotlin/com/janusleaf/
-│   │   │   ├── controller/
-│   │   │   ├── service/
-│   │   │   ├── repository/
-│   │   │   ├── model/
-│   │   │   ├── dto/
-│   │   │   ├── security/
-│   │   │   └── config/
-│   │   ├── integrationTest/
-│   │   └── test/
+├── backend/                    # Spring Boot backend
+│   ├── src/                    # Kotlin source code
 │   ├── docs/                   # API documentation
-│   │   ├── README.md
-│   │   ├── AUTH.md
-│   │   └── HEALTH.md
-│   ├── scripts/                # Helper scripts
-│   │   ├── start-db.sh
-│   │   └── stop-db.sh
-│   ├── docker-compose.yml      # Full stack
-│   ├── docker-compose.dev.yml  # Dev database only
-│   ├── Dockerfile
-│   └── build.gradle.kts
-├── app/                        # KMP mobile app (Android UI + shared module)
-├── docs/
-│   └── TODO.md
-└── README.md
+│   └── scripts/                # Deployment scripts
+├── app/                        # KMP mobile app
+│   ├── shared/                 # Kotlin Multiplatform shared module
+│   ├── composeApp/             # Android UI (Compose)
+│   ├── iosApp/                 # iOS UI (SwiftUI)
+│   └── docs/                   # Mobile app documentation
+└── docs/                       # Project-level docs
 ```
+
+---
+
+## 📖 Documentation
+
+### 📱 Mobile App
+
+See **[app/README.md](app/README.md)** for mobile app documentation:
+
+- [Getting Started](app/README.md#getting-started)
+- [Architecture](app/README.md#architecture)
+- [Configuration](app/README.md#configuration)
+- [Design System](app/README.md#design-system)
+
+### ⚙️ Backend API
+
+See **[backend/README.md](backend/README.md)** for backend documentation:
+
+- [Quick Start](backend/README.md#-quick-start)
+- [Data Models](backend/README.md#%EF%B8%8F-data-models)
+- [API Reference](backend/README.md#-api-quick-reference)
+
+Detailed API docs in [backend/docs/](backend/docs/):
+
+- [Authentication API](backend/docs/AUTH.md)
+- [Journal API](backend/docs/JOURNAL.md)
+- [Inspirational Quote API](backend/docs/INSPIRATION.md)
+- [Health Check API](backend/docs/HEALTH.md)
+- [Deployment Guide](backend/docs/DEPLOY.md)
+- [Secrets Management](backend/docs/SECRETS.md)
 
 ---
 
@@ -89,16 +102,17 @@ JanusLeaf/
 ### Prerequisites
 
 - Docker & Docker Compose
-- JDK 21 (for local development)
-- OpenAI API Key
+- JDK 21 (for backend development)
+- Xcode 15+ (for iOS)
+- Android Studio (for Android)
 
-### Option 1: Full Stack with Docker
+### Option 1: Run Backend with Docker
 
 ```bash
 cd backend
 
 # Set environment variables
-export OPENAI_API_KEY=your-key-here
+export OPENROUTER_API_KEY=your-key-here
 export JWT_SECRET=your-super-secret-jwt-key-at-least-32-chars
 
 # Start everything
@@ -117,183 +131,40 @@ cd backend
 ./gradlew bootRun
 ```
 
-### 3. Test the API
+### Run Mobile Apps
 
 ```bash
-# Health check
-curl http://localhost:8080/api/health
+cd app
 
-# Register a new user
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "username": "John", "password": "SecurePass123!"}'
+# iOS (Debug - connects to localhost)
+./scripts/run-ios.sh
 
-# Login and get tokens
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "SecurePass123!"}'
+# Android
+./scripts/run-android.sh
 ```
-
----
-
-## 🔐 Authentication
-
-JanusLeaf uses a **hybrid JWT authentication** system:
-
-| Token | Expiration | Storage | Purpose |
-|-------|------------|---------|---------|
-| **Access Token** | 15 minutes | Client only | API authentication |
-| **Refresh Token** | 7 days | Client + PostgreSQL | Get new access tokens |
-
-### Security Features
-
-- ✅ Short-lived access tokens (15 min exposure window)
-- ✅ Server-side refresh tokens (instant revocation)
-- ✅ Password change revokes all sessions
-- ✅ Logout from all devices endpoint
-
----
-
-## 📖 API Documentation
-
-See [backend/docs/](backend/docs/) for full API reference:
-
-- [Overview & Data Models](backend/docs/README.md)
-- [Authentication API](backend/docs/AUTH.md)
-- [Health Check API](backend/docs/HEALTH.md)
-
-### Quick Reference
-
-**Authentication (Public)**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/register` | Create account |
-| `POST` | `/api/auth/login` | Login, get tokens |
-| `POST` | `/api/auth/refresh` | Refresh access token |
-| `POST` | `/api/auth/logout` | Revoke refresh token |
-
-**Authentication (Requires JWT)**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/auth/me` | Get current user |
-| `PUT` | `/api/auth/me` | Update profile |
-| `POST` | `/api/auth/change-password` | Change password |
-| `POST` | `/api/auth/logout-all` | Logout all devices |
-
-**Journal (Requires JWT)**
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/journal` | List user's entries |
-| `POST` | `/api/journal` | Create new entry |
-| `GET` | `/api/journal/{id}` | Get entry by ID |
-| `GET` | `/api/journal/range` | Get entries by date range |
-| `PATCH` | `/api/journal/{id}` | Update entry metadata |
-| `PATCH` | `/api/journal/{id}/body` | Update entry body |
-| `DELETE` | `/api/journal/{id}` | Delete entry |
-
----
-
-## 🤖 How AI Analysis Works
-
-1. You write a journal entry
-2. The entry is sent to OpenAI GPT-4
-3. AI analyzes sentiment, tone, and content
-4. Returns:
-   - **Score (1-10)**: Overall positivity rating
-   - **Summary**: Brief mood description
-   - **Highlights**: Key positive/negative points
-
-### Scoring Guide
-
-| Score | Meaning |
-|-------|---------|
-| 1-3 | Difficult/Challenging day |
-| 4-5 | Below average |
-| 6 | Neutral/Average |
-| 7-8 | Good/Positive day |
-| 9-10 | Excellent/Amazing day |
-
----
-
-## 📱 Mobile App Screens
-
-### Welcome / Login
-- Clean login form
-- "Don't have an account? Register" link
-- Secure token storage (Keystore)
-
-### Register
-- Email, username, password fields
-- Password requirements indicator
-- Auto-login after registration
-
-### Homepage
-- List of recent notes with mood scores
-- Color-coded by score (red → yellow → green)
-- Pull to refresh
-- User profile access
-
-### Add Note
-- Text input for journal entry
-- "Analyzing..." state while AI processes
-- Score revealed with animation
-
-### View Note
-- Full note content
-- Mood score and summary
-- Highlights list
-- Edit/Delete options
-
-### Profile
-- View/edit username
-- Change password
-- Logout / Logout from all devices
 
 ---
 
 ## 🔮 Roadmap
 
-- [x] Backend API design
+- [x] Backend API (Spring Boot + Kotlin)
 - [x] User authentication (JWT with refresh tokens)
-- [x] Spring Boot implementation
-- [x] Docker setup
-- [x] GitHub Actions CI
-- [ ] Android app
-- [ ] Mood charts/graphs
-- [ ] Daily reminders
-- [ ] Export functionality
-- [ ] iOS app (Kotlin Multiplatform)
-
----
-
-## 🧪 Running Tests
-
-```bash
-cd backend
-
-# Unit tests
-./gradlew test
-
-# Integration tests
-./gradlew integrationTest
-
-# All tests
-./gradlew check
-```
+- [x] Journal CRUD with AI mood scoring
+- [x] Personalized inspirational quotes
+- [x] iOS app (SwiftUI)
+- [x] Production deployment (Oracle Cloud + Supabase)
+- [x] Multi-server failover
+- [ ] Android app (full implementation)
+- [ ] Mood charts/graphs (detailed analytics)
+- [ ] Daily reminders (push notifications)
+- [ ] Export functionality (PDF, JSON)
+- [ ] Offline support
 
 ---
 
 ## 📄 License
 
 MIT License - Feel free to use for personal projects!
-
----
-
-## 🙏 Acknowledgments
-
-- OpenAI for GPT-4 API
-- Spring Boot team
-- JetBrains for Kotlin
 
 ---
 

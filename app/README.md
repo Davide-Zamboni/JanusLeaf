@@ -1,4 +1,4 @@
-# 🍃 JanusLeaf App
+# JanusLeaf Mobile App
 
 > Kotlin Multiplatform mobile application for JanusLeaf mood-tracking journal
 
@@ -6,39 +6,40 @@ A modern journaling app with a shared KMP module for data/domain/backend integra
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 The app follows **Clean Architecture** principles. Shared domain/data lives in `:shared`, Android UI lives in `:composeApp`, and the iOS UI lives in `iosApp` (SwiftUI) while consuming the shared framework.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                        │
-│  ┌───────────────────┐   ┌───────────────────────┐        │
-│  │ Android UI        │   │ iOS UI               │        │
-│  │ (Compose)         │   │ (SwiftUI)            │        │
-│  └───────────────────┘   └───────────────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│                      DOMAIN LAYER                            │
-│  ┌─────────────┐   ┌─────────────┐                          │
-│  │   Models    │   │ Repository  │                          │
-│  │             │   │ Interfaces  │                          │
-│  └─────────────┘   └─────────────┘                          │
-├─────────────────────────────────────────────────────────────┤
-│                       DATA LAYER                             │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐       │
-│  │  Remote API │   │ Repository  │   │   Secure    │       │
-│  │   (Ktor)    │   │    Impl     │   │   Storage   │       │
-│  └─────────────┘   └─────────────┘   └─────────────┘       │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                     │
+│  ┌─────────────────────┐   ┌─────────────────────┐        │
+│  │ Android UI          │   │ iOS UI              │        │
+│  │ (Compose)           │   │ (SwiftUI)           │        │
+│  └─────────────────────┘   └─────────────────────┘        │
+├───────────────────────────────────────────────────────────┤
+│                       DOMAIN LAYER                        │
+│  ┌─────────────────┐   ┌─────────────────┐                │
+│  │ Models          │   │ Repository      │                │
+│  │                 │   │ Interfaces      │                │
+│  └─────────────────┘   └─────────────────┘                │
+├───────────────────────────────────────────────────────────┤
+│                        DATA LAYER                         │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐      │
+│  │ Remote API  │   │ Repository  │   │ Secure      │      │
+│  │ (Ktor)      │   │ Impl        │   │ Storage     │      │
+│  └─────────────┘   └─────────────┘   └─────────────┘      │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
 | **Compose Multiplatform** | Android UI |
+| **SwiftUI** | iOS UI |
 | **Ktor Client** | HTTP networking |
 | **Kotlinx Serialization** | JSON parsing |
 | **Koin** | Dependency injection |
@@ -48,7 +49,7 @@ The app follows **Clean Architecture** principles. Shared domain/data lives in `
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 app/
@@ -60,12 +61,15 @@ app/
 │       ├── androidMain/
 │       └── iosMain/
 ├── iosApp/                      # iOS SwiftUI Xcode project
-└── gradle/
+├── scripts/
+│   ├── run-android.sh
+│   └── run-ios.sh
+└── docs/                        # Additional documentation
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -75,7 +79,7 @@ app/
 
 ### Running the Backend
 
-The app requires the JanusLeaf backend to be running:
+The app requires the JanusLeaf backend to be running. See [Backend Documentation](../backend/README.md) for setup.
 
 ```bash
 cd ../backend
@@ -97,15 +101,26 @@ cd ../backend
 
 ### Running on iOS
 
-#### 1. Build the iOS shared framework
-
-The iOS app consumes the KMP shared framework generated by Gradle:
+#### Option 1: Use the helper script (recommended)
 
 ```bash
-./gradlew :shared:embedAndSignAppleFrameworkForXcode
+./scripts/run-ios.sh          # Debug (localhost)
+./scripts/run-ios.sh --prod   # Production servers
 ```
 
-Or build + launch directly from the CLI (one-shot):
+#### Option 2: Build manually
+
+```bash
+# Build the iOS shared framework
+./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+# Open in Xcode
+open iosApp/iosApp.xcodeproj
+
+# Build and Run from Xcode
+```
+
+#### Option 3: CLI (one-shot)
 
 ```bash
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' -derivedDataPath /tmp/janusleaf-ios build
@@ -113,80 +128,101 @@ xcrun simctl install booted /tmp/janusleaf-ios/Build/Products/Debug-iphonesimula
 xcrun simctl launch booted com.janusleaf.app
 ```
 
-Or use the helper script:
+---
 
-```bash
-./scripts/run-ios.sh
-```
+## Agent Launch Notes
 
-#### 2. Open in Xcode
+These steps are written for AI agents (Codex, Claude CLI, Copilot, Cursor) to reliably launch the apps.
 
-Open `iosApp/iosApp.xcodeproj` in Xcode
+### Android
 
-#### 3. Build and Run
+1. Ensure SDK is configured in `local.properties`:
+   ```
+   sdk.dir=/Users/USERNAME/Library/Android/sdk
+   ```
 
-- Select your target (Simulator or Physical Device)
-- **Clean Build Folder** (Product → Clean Build Folder) if you changed the Gradle build
-- Build and Run
+2. Start an emulator:
+   ```bash
+   emulator -list-avds
+   emulator -avd Pixel_9_Pro
+   ```
+
+3. Build + install:
+   ```bash
+   ./gradlew :composeApp:installDebug
+   ```
+
+4. Launch:
+   ```bash
+   adb shell am start -n com.janusleaf.app/.MainActivity
+   ```
+
+### iOS
+
+1. Build shared framework:
+   ```bash
+   ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+   ```
+
+2. Launch in Xcode (recommended):
+   ```bash
+   open iosApp/iosApp.xcodeproj
+   ```
+
+3. Or CLI launch (simulator):
+   ```bash
+   xcrun simctl list devices
+   xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15' build
+   ```
 
 ---
 
-## 🤖 Agent Launch Notes (Android + iOS)
+## Configuration
 
-These steps are written for future AI agents (Codex, Claude CLI, Copilot, Cursor) to reliably launch the apps.
+### Environment (Development vs Production)
 
-### Android (Compose UI)
+The app supports **build-time environment configuration** via Gradle flags:
 
-1. Ensure SDK is configured:
+| Flag | Environment | Backend URL |
+|------|-------------|-------------|
+| `-PuseProduction=true` | Production | First available server in `PRODUCTION_SERVERS` |
+| *(default)* | Development | localhost / 10.0.2.2 |
+
+#### Production Build
+
 ```bash
-cd app
-cat local.properties
-```
-Expected:
-```
-sdk.dir=/Users/marhan/Library/Android/sdk
+# Android
+./gradlew :composeApp:assembleDebug -PuseProduction=true
+./gradlew :composeApp:assembleRelease -PuseProduction=true
+
+# iOS - Build shared framework
+./gradlew :shared:embedAndSignAppleFrameworkForXcode -PuseProduction=true
 ```
 
-2. Start an emulator (example):
+#### Development Build (local backend)
+
 ```bash
-emulator -list-avds
-emulator -avd Pixel_9_Pro
-```
+# Android (default - no flag needed)
+./gradlew :composeApp:assembleDebug
 
-3. Build + install:
-```bash
-./gradlew :composeApp:installDebug
-```
-
-4. Launch the app:
-```bash
-adb shell am start -n com.janusleaf.app/.MainActivity
-```
-
-### iOS (SwiftUI + KMP shared)
-
-1. Build the shared framework:
-```bash
-cd app
+# iOS
 ./gradlew :shared:embedAndSignAppleFrameworkForXcode
 ```
 
-2. Launch in Xcode (recommended):
-```bash
-open iosApp/iosApp.xcodeproj
-```
+### API Configuration
 
-3. Optional CLI launch (simulator):
-```bash
-xcrun simctl list devices
-xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15' build
-```
+Update production servers in:
+- `shared/src/commonMain/kotlin/com/janusleaf/app/data/remote/ServerAvailabilityManager.kt`
+
+Local dev URLs in:
+- `shared/src/androidMain/kotlin/com/janusleaf/app/data/remote/ApiConfig.android.kt`
+- `shared/src/iosMain/kotlin/com/janusleaf/app/data/remote/ApiConfig.ios.kt`
 
 ---
 
-## 🎨 Design System
+## Design System
 
-The app features a custom design system inspired by **2026 design trends**:
+The app features a custom design system inspired by **2026 design trends**.
 
 ### Color Palette
 
@@ -211,12 +247,14 @@ The app features a custom design system inspired by **2026 design trends**:
 
 ---
 
-## 🔐 Security
+## Security
 
 ### Token Storage
 
-- **Android**: EncryptedSharedPreferences with Android Keystore
-- **iOS**: Keychain with hardware encryption
+| Platform | Storage |
+|----------|---------|
+| **Android** | EncryptedSharedPreferences with Android Keystore |
+| **iOS** | Keychain with hardware encryption |
 
 ### Authentication Flow
 
@@ -227,91 +265,34 @@ The app features a custom design system inspired by **2026 design trends**:
 4. Refresh Failed → Redirect to login
 ```
 
----
-
-## 📱 Screens
-
-### Authentication (Implemented ✅)
-- Login with email/password
-- Register with email/username/password
-- Form validation with animated errors
-- Secure token management
-
-### Home (Placeholder)
-- Welcome screen after login
-- Logout functionality
-
-### Coming Soon
-- Journal entry list
-- Create/edit notes
-- AI mood analysis
-- Statistics & trends
-- Profile management
+For full authentication API details, see [Backend Auth Documentation](../backend/docs/AUTH.md).
 
 ---
 
-## 🔧 Configuration
+## Screens
 
-### Environment Setup (Development vs Production)
+### Implemented
 
-The app supports **build-time environment configuration** via Gradle flags:
+| Screen | Platform | Status |
+|--------|----------|--------|
+| **Auth (Login/Register)** | iOS, Android | ✅ |
+| **Home** | iOS | ✅ |
+| **Journal List** | iOS | ✅ |
+| **Journal Editor** | iOS | ✅ |
+| **Mood Insights** | iOS | ✅ |
+| **Profile** | iOS | ✅ |
 
-#### Production Build
+### Coming Soon (Android)
 
-```bash
-# Android
-./gradlew :composeApp:assembleDebug -PuseProduction=true
-./gradlew :composeApp:assembleRelease -PuseProduction=true
+- Home
+- Journal List/Editor
+- Mood Insights
+- Profile
 
-# iOS - Build shared framework (Xcode will pick the correct target)
-./gradlew :shared:embedAndSignAppleFrameworkForXcode -PuseProduction=true
-```
+---
 
-#### Development Build (local backend)
+## Notes for Production
 
-```bash
-# Android (default - no flag needed)
-./gradlew :composeApp:assembleDebug
-
-# iOS
-./gradlew :shared:embedAndSignAppleFrameworkForXcode
-```
-
-### API Base URL Configuration
-
-Update your production servers in `shared/src/commonMain/kotlin/com/janusleaf/app/data/remote/ServerAvailabilityManager.kt` and local dev URLs in:
-- `shared/src/androidMain/kotlin/com/janusleaf/app/data/remote/ApiConfig.android.kt`
-- `shared/src/iosMain/kotlin/com/janusleaf/app/data/remote/ApiConfig.ios.kt`
-
-Production servers are checked in order for availability:
-```kotlin
-private val PRODUCTION_SERVERS = listOf(
-    ServerConfig("http://80.225.83.90:8080"),
-    ServerConfig("http://158.180.228.188:8080"),
-    ServerConfig("https://janusleaf.onrender.com")
-)
-```
-
-### How It Works
-
-| Flag | Environment | Backend URL |
-|------|-------------|-------------|
-| `-PuseProduction=true` | Production | First available server in `PRODUCTION_SERVERS` |
-| *(default)* | Development | localhost / 10.0.2.2 |
-
-The build will output which environment was configured:
-```
-🔧 BuildConfig generated: USE_PRODUCTION = true
-```
-
-### ⚠️ Notes for Production
-
-- **HTTPS Required**: Render uses HTTPS by default ✓
+- **HTTPS Required**: Render uses HTTPS by default
 - **Cold Starts**: Free Render instances spin down after inactivity (~30s wake-up time)
 - **No Trailing Slash**: Ensure your URL doesn't end with `/`
-
----
-
-## 📄 License
-
-MIT License - Part of the JanusLeaf project
