@@ -7,6 +7,50 @@ cd "$APP_DIR"
 DERIVED_DATA="${DERIVED_DATA:-/tmp/janusleaf-ios}"
 BUNDLE_ID="com.janusleaf.app"
 
+# Default to Debug configuration
+CONFIGURATION="Debug"
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prod|--release)
+      CONFIGURATION="Release"
+      shift
+      ;;
+    --debug)
+      CONFIGURATION="Debug"
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $(basename "$0") [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --debug       Build and run in Debug mode (default)"
+      echo "  --prod        Build and run in Release/Production mode"
+      echo "  --release     Alias for --prod"
+      echo "  -h, --help    Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo "Use --help for usage information." >&2
+      exit 1
+      ;;
+  esac
+done
+
+echo "Building with configuration: $CONFIGURATION"
+
+# Set production flag via environment variable for Gradle
+# Gradle reads ORG_GRADLE_PROJECT_* env vars as project properties
+if [[ "$CONFIGURATION" == "Release" ]]; then
+  export ORG_GRADLE_PROJECT_useProduction=true
+  echo "Building for PRODUCTION (API will connect to production servers)"
+else
+  export ORG_GRADLE_PROJECT_useProduction=false
+  echo "Building for DEVELOPMENT (API will connect to localhost)"
+fi
+
 BOOTED_UDID=$(python3 - <<'PY'
 import json
 import subprocess
@@ -50,9 +94,10 @@ else
   DEVICE_UDID="$BOOTED_UDID"
 fi
 
-xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination "id=$DEVICE_UDID" -derivedDataPath "$DERIVED_DATA" build
+# Xcode will invoke Gradle with the ORG_GRADLE_PROJECT_useProduction env var
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration "$CONFIGURATION" -destination "id=$DEVICE_UDID" -derivedDataPath "$DERIVED_DATA" build
 
-APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/JanusLeaf.app"
+APP_PATH="$DERIVED_DATA/Build/Products/$CONFIGURATION-iphonesimulator/JanusLeaf.app"
 if [[ ! -d "$APP_PATH" ]]; then
   echo "App not found at $APP_PATH" >&2
   exit 1
