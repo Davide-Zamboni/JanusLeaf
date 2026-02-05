@@ -10,8 +10,8 @@ import com.janusleaf.app.viewmodel.state.AuthUiState
 import com.janusleaf.app.viewmodel.state.InspirationUiState
 import com.janusleaf.app.viewmodel.state.JournalListUiState
 import com.janusleaf.app.model.data.store.AuthStore
-import com.janusleaf.app.model.data.store.InspirationStore
-import com.janusleaf.app.model.data.store.JournalStore
+import com.janusleaf.app.model.store.InspirationStore
+import com.janusleaf.app.model.store.JournalStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
