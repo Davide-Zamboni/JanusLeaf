@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.janusleaf.app.domain.model.JournalResult
 import com.janusleaf.app.viewmodel.state.JournalEditorUiState
-import com.janusleaf.app.model.store.JournalStore
+import com.janusleaf.app.model.data.store.JournalStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

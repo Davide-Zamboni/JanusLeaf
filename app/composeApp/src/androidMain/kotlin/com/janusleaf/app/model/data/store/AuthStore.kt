@@ -1,4 +1,4 @@
-package com.janusleaf.app.model.store
+package com.janusleaf.app.model.data.store
 
 import com.janusleaf.app.domain.model.AuthResult
 import com.janusleaf.app.domain.repository.AuthRepository

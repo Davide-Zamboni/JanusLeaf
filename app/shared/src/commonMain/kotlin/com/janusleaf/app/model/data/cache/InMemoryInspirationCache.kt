@@ -1,4 +1,4 @@
-package com.janusleaf.app.model.cache
+package com.janusleaf.app.model.data.cache
 
 import com.janusleaf.app.domain.model.InspirationalQuote
 import kotlinx.coroutines.flow.Flow
