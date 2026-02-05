@@ -12,6 +12,10 @@ import com.janusleaf.app.domain.model.*
 import com.janusleaf.app.domain.repository.AuthRepository
 import com.janusleaf.app.domain.repository.JournalRepository
 import com.janusleaf.app.domain.repository.TokenStorage
+import com.janusleaf.app.model.data.cache.InMemoryInspirationCache
+import com.janusleaf.app.model.data.cache.InMemoryJournalCache
+import com.janusleaf.app.model.data.store.InspirationStore
+import com.janusleaf.app.model.data.store.JournalStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,12 +58,16 @@ object SharedModule {
     private val inspirationApi by lazy { InspirationApiService(httpClient, getPlatformBaseUrl()) }
     private val authRepository: AuthRepository by lazy { AuthRepositoryImpl(authApi, tokenStorage) }
     private val journalRepository: JournalRepository by lazy { JournalRepositoryImpl(journalApi, tokenStorage, authApi) }
+    private val journalStore: JournalStore by lazy { JournalStore(journalRepository, InMemoryJournalCache()) }
+    private val inspirationStore: InspirationStore by lazy {
+        InspirationStore(inspirationApi, authApi, tokenStorage, InMemoryInspirationCache())
+    }
 
     fun createAuthService(): IosAuthService = IosAuthService(authRepository, tokenStorage)
 
-    fun createJournalService(): IosJournalService = IosJournalService(journalRepository, tokenStorage)
+    fun createJournalService(): IosJournalService = IosJournalService(journalStore)
 
-    fun createInspirationService(): IosInspirationService = IosInspirationService(inspirationApi, tokenStorage)
+    fun createInspirationService(): IosInspirationService = IosInspirationService(inspirationStore)
 }
 
 class IosAuthService(
@@ -180,8 +188,7 @@ class IosAuthService(
 }
 
 class IosJournalService(
-    private val journalRepository: JournalRepository,
-    private val tokenStorage: TokenStorage
+    private val journalStore: JournalStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val isLoading = MutableStateFlow(false)
@@ -192,6 +199,15 @@ class IosJournalService(
 
     private var currentPage = 0
     private val pageSize = 20
+    private var isLoadingMore = false
+    private var currentEntryId: String? = null
+    private var currentEntryJob: Job? = null
+
+    init {
+        scope.launch {
+            journalStore.observeEntries().collect { entries.value = it }
+        }
+    }
 
     fun observeLoading(callback: (Boolean) -> Unit): Cancellable =
         isLoading.asStateFlow().collectIn(scope, callback)
@@ -213,27 +229,29 @@ class IosJournalService(
             isLoading.value = true
             currentPage = 0
             val result = withContext(Dispatchers.Default) {
-                journalRepository.listEntries(currentPage, pageSize)
+                journalStore.loadEntries(page = currentPage, size = pageSize)
             }
-            handlePageResult(result, replace = true)
+            handlePageResult(result, page = currentPage)
             isLoading.value = false
             onComplete()
         }
     }
 
     fun loadMoreEntries(onComplete: () -> Unit) {
-        if (!hasMore.value) {
+        if (!hasMore.value || isLoadingMore) {
             onComplete()
             return
         }
         scope.launch {
+            isLoadingMore = true
             isLoading.value = true
             val nextPage = currentPage + 1
             val result = withContext(Dispatchers.Default) {
-                journalRepository.listEntries(nextPage, pageSize)
+                journalStore.loadEntries(page = nextPage, size = pageSize)
             }
-            handlePageResult(result, replace = false, page = nextPage)
+            handlePageResult(result, page = nextPage)
             isLoading.value = false
+            isLoadingMore = false
             onComplete()
         }
     }
@@ -249,12 +267,12 @@ class IosJournalService(
             isLoading.value = true
             val parsedDate = entryDate?.let { LocalDate.parse(it) }
             val result = withContext(Dispatchers.Default) {
-                journalRepository.createEntry(title, body, parsedDate)
+                journalStore.createEntry(title, body, parsedDate)
             }
             when (result) {
                 is JournalResult.Success -> {
+                    bindCurrentEntry(result.data.id)
                     currentEntry.value = result.data
-                    entries.value = listOf(result.data.toPreview()) + entries.value
                     errorMessage.value = null
                     onSuccess(result.data)
                 }
@@ -277,10 +295,11 @@ class IosJournalService(
         scope.launch {
             isLoading.value = true
             val result = withContext(Dispatchers.Default) {
-                journalRepository.getEntry(id)
+                journalStore.getEntry(id)
             }
             when (result) {
                 is JournalResult.Success -> {
+                    bindCurrentEntry(id)
                     currentEntry.value = result.data
                     errorMessage.value = null
                     onSuccess(result.data)
@@ -305,19 +324,14 @@ class IosJournalService(
     ) {
         scope.launch {
             isLoading.value = true
+            bindCurrentEntry(id)
             val result = withContext(Dispatchers.Default) {
-                journalRepository.updateBody(id, body, expectedVersion)
+                journalStore.updateBody(id, body, expectedVersion)
             }
             when (result) {
                 is JournalResult.Success -> {
-                    val update = result.data
-                    currentEntry.value = currentEntry.value?.copy(
-                        body = update.body,
-                        version = update.version,
-                        updatedAt = update.updatedAt
-                    )
                     errorMessage.value = null
-                    onSuccess(update.version)
+                    onSuccess(result.data.version)
                 }
                 is JournalResult.Error -> {
                     val message = result.error.toUserMessage()
@@ -339,12 +353,12 @@ class IosJournalService(
     ) {
         scope.launch {
             isLoading.value = true
+            bindCurrentEntry(id)
             val result = withContext(Dispatchers.Default) {
-                journalRepository.updateMetadata(id, title, moodScore, expectedVersion = null)
+                journalStore.updateMetadata(id, title, moodScore, expectedVersion = null)
             }
             when (result) {
                 is JournalResult.Success -> {
-                    currentEntry.value = result.data
                     errorMessage.value = null
                     onSuccess(result.data)
                 }
@@ -367,13 +381,12 @@ class IosJournalService(
         scope.launch {
             isLoading.value = true
             val result = withContext(Dispatchers.Default) {
-                journalRepository.deleteEntry(id)
+                journalStore.deleteEntry(id)
             }
             when (result) {
                 is JournalResult.Success -> {
-                    entries.value = entries.value.filterNot { it.id == id }
-                    if (currentEntry.value?.id == id) {
-                        currentEntry.value = null
+                    if (currentEntryId == id) {
+                        clearCurrentEntry()
                     }
                     errorMessage.value = null
                     onSuccess()
@@ -390,6 +403,8 @@ class IosJournalService(
     }
 
     fun clearCurrentEntry() {
+        currentEntryId = null
+        currentEntryJob?.cancel()
         currentEntry.value = null
     }
 
@@ -397,18 +412,9 @@ class IosJournalService(
         errorMessage.value = null
     }
 
-    private fun handlePageResult(
-        result: JournalResult<JournalPage>,
-        replace: Boolean,
-        page: Int = 0
-    ) {
+    private fun handlePageResult(result: JournalResult<JournalPage>, page: Int) {
         when (result) {
             is JournalResult.Success -> {
-                if (replace) {
-                    entries.value = result.data.entries
-                } else {
-                    entries.value = entries.value + result.data.entries
-                }
                 currentPage = page
                 hasMore.value = result.data.hasNext
                 errorMessage.value = null
@@ -420,28 +426,32 @@ class IosJournalService(
         }
     }
 
-    private fun Journal.toPreview(): JournalPreview {
-        val previewText = if (body.length <= 120) body else body.take(120) + "…"
-        return JournalPreview(
-            id = id,
-            title = title,
-            bodyPreview = previewText,
-            moodScore = moodScore,
-            entryDate = entryDate,
-            updatedAt = updatedAt
-        )
+    private fun bindCurrentEntry(entryId: String) {
+        if (currentEntryId == entryId) return
+        currentEntryId = entryId
+        currentEntryJob?.cancel()
+        currentEntryJob = scope.launch {
+            journalStore.observeEntry(entryId).collect { entry ->
+                currentEntry.value = entry
+            }
+        }
     }
 }
 
 class IosInspirationService(
-    private val inspirationApiService: InspirationApiService,
-    private val tokenStorage: TokenStorage
+    private val inspirationStore: InspirationStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val isLoading = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
     private val quote = MutableStateFlow<InspirationalQuote?>(null)
     private val notFound = MutableStateFlow(false)
+
+    init {
+        scope.launch {
+            inspirationStore.observeQuote().collect { quote.value = it }
+        }
+    }
 
     fun observeLoading(callback: (Boolean) -> Unit): Cancellable =
         isLoading.asStateFlow().collectIn(scope, callback)
@@ -458,29 +468,22 @@ class IosInspirationService(
     fun fetchQuote(onComplete: () -> Unit) {
         scope.launch {
             isLoading.value = true
-            val accessToken = tokenStorage.getAccessToken()
-            if (accessToken == null) {
-                val message = InspirationError.Unauthorized.toUserMessage()
-                errorMessage.value = message
-                notFound.value = false
-                isLoading.value = false
-                onComplete()
-                return@launch
-            }
             val result = withContext(Dispatchers.Default) {
-                inspirationApiService.getInspiration(accessToken)
+                inspirationStore.fetchQuote()
             }
             when (result) {
                 is InspirationResult.Success -> {
-                    quote.value = result.data.toDomain()
                     notFound.value = false
                     errorMessage.value = null
                 }
                 is InspirationResult.Error -> {
                     if (result.error is InspirationError.NotFound) {
                         notFound.value = true
+                        errorMessage.value = null
+                    } else {
+                        notFound.value = false
+                        errorMessage.value = result.error.toUserMessage()
                     }
-                    errorMessage.value = result.error.toUserMessage()
                 }
                 is InspirationResult.Loading -> Unit
             }

@@ -78,7 +78,7 @@ fun JournalListScreen(
         }
     }
 
-    val createEntry: () -> Unit = {
+    val createEntry: () -> Unit = createEntry@{
         if (journalState.isCreatingEntry) return@createEntry
         viewModel.createEntry { entry ->
             entry?.id?.let { onEntryClick(it) }
