@@ -7,8 +7,8 @@ struct JanusLeafApp: App {
     @StateObject private var authManager = AuthManager()
     
     init() {
-        let bridge = SharedBridge()
-        print("KMP: \(bridge.hello())")
+        _ = SharedModule.shared
+        print("KMP: SharedModule initialized")
     }
     
     var body: some Scene {

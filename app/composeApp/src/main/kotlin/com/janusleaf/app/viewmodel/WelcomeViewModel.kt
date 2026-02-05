@@ -1,8 +1,8 @@
 package com.janusleaf.app.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.janusleaf.app.viewmodel.state.AuthUiState
-import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.store.state.AuthUiState
+import com.janusleaf.app.model.store.AuthStore
 import kotlinx.coroutines.flow.StateFlow
 
 class WelcomeViewModel(

@@ -4,7 +4,7 @@ import com.janusleaf.app.model.cache.InMemoryInspirationCache
 import com.janusleaf.app.model.cache.InMemoryJournalCache
 import com.janusleaf.app.model.cache.InspirationCache
 import com.janusleaf.app.model.cache.JournalCache
-import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
 import com.janusleaf.app.viewmodel.AuthScreenViewModel

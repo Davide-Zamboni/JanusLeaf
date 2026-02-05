@@ -44,7 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.viewmodel.AuthScreenViewModel
 
 @Composable
@@ -114,8 +114,8 @@ fun AuthScreenContent(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (uiState.errorMessage != null) {
-                        ErrorBanner(message = uiState.errorMessage, onDismiss = onClearError)
+                    uiState.errorMessage?.let { message ->
+                        ErrorBanner(message = message, onDismiss = onClearError)
                     }
 
                     OutlinedTextField(

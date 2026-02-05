@@ -6,10 +6,10 @@ import com.janusleaf.app.domain.model.InspirationError
 import com.janusleaf.app.domain.model.InspirationResult
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalResult
-import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.viewmodel.state.InspirationUiState
 import com.janusleaf.app.viewmodel.state.JournalListUiState
-import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
 import kotlinx.coroutines.flow.MutableStateFlow

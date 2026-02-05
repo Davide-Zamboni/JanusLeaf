@@ -4,7 +4,7 @@ import com.janusleaf.app.domain.model.InspirationalQuote
 import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.domain.model.User
-import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.viewmodel.state.InspirationUiState
 import com.janusleaf.app.viewmodel.state.JournalListUiState
 import kotlinx.datetime.Clock

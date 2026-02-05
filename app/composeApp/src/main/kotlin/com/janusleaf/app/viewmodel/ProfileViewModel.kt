@@ -3,8 +3,8 @@ package com.janusleaf.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.janusleaf.app.domain.model.JournalPreview
-import com.janusleaf.app.viewmodel.state.AuthUiState
-import com.janusleaf.app.model.data.store.AuthStore
+import com.janusleaf.app.model.store.state.AuthUiState
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.JournalStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

@@ -1,9 +1,9 @@
-package com.janusleaf.app.model.data.store
+package com.janusleaf.app.model.store
 
 import com.janusleaf.app.domain.model.AuthResult
 import com.janusleaf.app.domain.repository.AuthRepository
 import com.janusleaf.app.domain.repository.TokenStorage
-import com.janusleaf.app.viewmodel.state.AuthUiState
+import com.janusleaf.app.model.store.state.AuthUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
