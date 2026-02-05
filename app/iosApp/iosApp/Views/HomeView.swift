@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
     @State private var showLogoutConfirmation = false
     
     var body: some View {
@@ -22,7 +22,7 @@ struct HomeView: View {
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     
-                    if let email = authManager.currentUserEmail {
+                    if let email = authViewModel.currentUserEmail {
                         Text(email)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
@@ -49,7 +49,7 @@ struct HomeView: View {
         .ignoresSafeArea()
         .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
             Button("Sign Out", role: .destructive) {
-                authManager.logout()
+                authViewModel.logout()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -60,5 +60,5 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
-        .environmentObject(AuthManager())
+        .environmentObject(AuthViewModelAdapter())
 }

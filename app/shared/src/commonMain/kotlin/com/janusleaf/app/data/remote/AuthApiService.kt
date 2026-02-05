@@ -16,6 +16,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CancellationException
 
 /**
  * API service for authentication endpoints.
@@ -125,6 +126,7 @@ class AuthApiService(
             val response = apiCall()
             handleResponse(response)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Napier.e("API call failed", e, tag = "AuthApiService")
             when {
                 e.message?.contains("connect", ignoreCase = true) == true ||
@@ -146,6 +148,7 @@ class AuthApiService(
                 try {
                     AuthResult.Success(response.body<T>())
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Napier.e("Failed to parse response", e, tag = "AuthApiService")
                     AuthResult.Error(AuthError.UnknownError("Failed to parse response"))
                 }
@@ -190,6 +193,7 @@ class AuthApiService(
             val body = response.bodyAsText()
             json.decodeFromString<ErrorResponseDto>(body)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             null
         }
     }

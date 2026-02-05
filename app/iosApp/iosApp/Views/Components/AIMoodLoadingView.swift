@@ -235,7 +235,7 @@ struct AnimatedMoodBadge: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    JournalManager.moodColor(for: score).opacity(0.4),
+                                    MoodHelpers.color(for: score).opacity(0.4),
                                     Color.clear
                                 ],
                                 center: .center,
@@ -298,7 +298,7 @@ struct MoodBadgeDisplay: View {
     
     var body: some View {
         HStack(spacing: 4) {
-            Text(JournalManager.moodEmoji(for: score))
+            Text(MoodHelpers.emoji(for: score))
                 .font(.system(size: 14))
             
             Text("\(score)")
@@ -309,7 +309,7 @@ struct MoodBadgeDisplay: View {
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(JournalManager.moodColor(for: score).opacity(0.3))
+                .fill(MoodHelpers.color(for: score).opacity(0.3))
         )
     }
 }

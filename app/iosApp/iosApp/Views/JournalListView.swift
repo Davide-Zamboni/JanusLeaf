@@ -3,9 +3,8 @@ import Shared
 
 @available(iOS 17.0, *)
 struct JournalListView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var journalManager: JournalManager
-    @StateObject private var inspirationManager = InspirationManager()
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @StateObject private var journalListViewModel = JournalListViewModelAdapter()
     
     @State private var selectedEntryId: String? = nil
     @State private var showLogoutConfirmation = false
@@ -24,9 +23,9 @@ struct JournalListView: View {
                     // Custom header
                     headerView
                     
-                    if journalManager.isLoading && journalManager.entries.isEmpty {
+                    if journalListViewModel.isLoading && journalListViewModel.entries.isEmpty {
                         loadingView
-                    } else if journalManager.entries.isEmpty {
+                    } else if journalListViewModel.entries.isEmpty {
                         emptyStateView
                     } else {
                         journalListView
@@ -40,18 +39,17 @@ struct JournalListView: View {
                     if !$0 { 
                         selectedEntryId = nil
                         // Refresh entries when coming back from editor
-                        journalManager.refresh()
+                        journalListViewModel.refresh()
                     } 
                 }
             )) {
                 if let entryId = selectedEntryId {
                     JournalEditorView(entryId: entryId)
-                        .environmentObject(journalManager)
                 }
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
-                    authManager.logout()
+                    authViewModel.logout()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -59,8 +57,8 @@ struct JournalListView: View {
             }
         }
         .onAppear {
-            journalManager.loadEntries()
-            inspirationManager.fetchQuote()
+            journalListViewModel.loadEntries()
+            journalListViewModel.fetchQuote()
             withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
                 animateItems = true
             }
@@ -80,9 +78,9 @@ struct JournalListView: View {
         // Poll every 5 seconds to check for mood score updates
         moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             // Only refresh if there are entries with nil mood scores
-            let hasPendingMoods = journalManager.entries.contains { $0.moodScore == nil }
+            let hasPendingMoods = journalListViewModel.entries.contains { $0.moodScore == nil }
             if hasPendingMoods {
-                journalManager.refresh()
+                journalListViewModel.refresh()
             }
         }
     }
@@ -99,8 +97,9 @@ struct JournalListView: View {
         // Poll every 10 seconds if no quote is available yet (more responsive)
         inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
             // Refresh if quote is not found OR if we haven't loaded yet
-            if inspirationManager.isNotFound || (inspirationManager.quote == nil && !inspirationManager.isLoading) {
-                inspirationManager.refresh()
+            if journalListViewModel.inspirationIsNotFound ||
+                (journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsLoading) {
+                journalListViewModel.refreshQuote()
             }
         }
     }
@@ -152,7 +151,7 @@ struct JournalListView: View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 16) {
                 // Inspirational quote section
-                InspirationalQuoteView(inspirationManager: inspirationManager)
+                InspirationalQuoteView(journalListViewModel: journalListViewModel)
                     .padding(.top, 4)
                     .opacity(animateItems ? 1 : 0)
                     .offset(y: animateItems ? 0 : 20)
@@ -170,7 +169,7 @@ struct JournalListView: View {
                         value: animateItems
                     )
                 
-                ForEach(Array(journalManager.entries.enumerated()), id: \.element.id) { index, entry in
+                ForEach(Array(journalListViewModel.entries.enumerated()), id: \.element.id) { index, entry in
                     JournalEntryCard(entry: entry) {
                         selectedEntryId = entry.id
                     }
@@ -184,7 +183,7 @@ struct JournalListView: View {
                 }
                 
                 // Load more indicator
-                if journalManager.hasMore {
+                if journalListViewModel.hasMore {
                     loadMoreIndicator
                 }
             }
@@ -192,8 +191,8 @@ struct JournalListView: View {
             .padding(.bottom, 100)
         }
         .refreshable {
-            journalManager.refresh()
-            inspirationManager.refresh()
+            journalListViewModel.refresh()
+            journalListViewModel.refreshQuote()
         }
     }
     
@@ -265,7 +264,7 @@ struct JournalListView: View {
         guard !isCreatingEntry else { return }
         isCreatingEntry = true
         
-        journalManager.createEntry(
+        journalListViewModel.createEntry(
             title: nil,
             body: nil,
             entryDate: Date()
@@ -275,7 +274,7 @@ struct JournalListView: View {
                 selectedEntryId = journal.id
                 // Refresh inspiration after creating new entry (triggers regeneration on backend)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    inspirationManager.refresh()
+                    journalListViewModel.refreshQuote()
                 }
             }
         }
@@ -375,9 +374,9 @@ struct JournalListView: View {
     // MARK: - Load More
     
     private var loadMoreIndicator: some View {
-        Button(action: { journalManager.loadMoreEntries() }) {
+        Button(action: { journalListViewModel.loadMoreEntries() }) {
             HStack(spacing: 8) {
-                if journalManager.isLoading {
+                if journalListViewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
@@ -389,13 +388,13 @@ struct JournalListView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
         }
-        .disabled(journalManager.isLoading)
+        .disabled(journalListViewModel.isLoading)
     }
     
     // MARK: - Helpers
     
     private var headerTitle: String {
-        if let username = authManager.currentUsername, !username.isEmpty {
+        if let username = authViewModel.currentUsername, !username.isEmpty {
             return "\(username)'s Journal"
         }
         return "Journal"
@@ -600,6 +599,5 @@ struct ScaleButtonStyle: ButtonStyle {
 @available(iOS 17.0, *)
 #Preview {
     JournalListView()
-        .environmentObject(AuthManager())
-        .environmentObject(JournalManager())
+        .environmentObject(AuthViewModelAdapter())
 }

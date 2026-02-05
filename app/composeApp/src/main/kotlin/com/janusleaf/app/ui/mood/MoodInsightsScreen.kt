@@ -64,7 +64,7 @@ import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.ui.util.formatAxisDate
 import com.janusleaf.app.ui.util.formatShortDate
 import com.janusleaf.app.ui.util.moodColor
-import com.janusleaf.app.viewmodel.MoodInsightsViewModel
+import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate

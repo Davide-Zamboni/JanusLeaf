@@ -5,8 +5,7 @@ import Shared
 
 @available(iOS 17.0, *)
 struct MainTabView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var journalManager: JournalManager
+    @StateObject private var journalListViewModel = JournalListViewModelAdapter()
     
     @State private var selectedTab: Int = 0
     @State private var isCreatingEntry = false
@@ -19,6 +18,7 @@ struct MainTabView: View {
             Group {
                 if selectedTab == 0 {
                     JournalTabContent(
+                        journalListViewModel: journalListViewModel,
                         navigateToEntry: $navigateToEntry,
                         isEditorPresented: $isEditorPresented,
                         isCreatingEntry: $isCreatingEntry,
@@ -184,7 +184,7 @@ struct MainTabView: View {
         isCreatingEntry = true
         selectedTab = 0
         
-        journalManager.createEntry(
+        journalListViewModel.createEntry(
             title: nil,
             body: nil,
             entryDate: Date()
@@ -268,9 +268,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
 
 @available(iOS 17.0, *)
 struct JournalTabContent: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var journalManager: JournalManager
-    @StateObject private var inspirationManager = InspirationManager()
+    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @ObservedObject var journalListViewModel: JournalListViewModelAdapter
     
     @Binding var navigateToEntry: String?
     @Binding var isEditorPresented: Bool
@@ -295,9 +294,9 @@ struct JournalTabContent: View {
                 VStack(spacing: 0) {
                     headerView
                     
-                    if journalManager.isLoading && journalManager.entries.isEmpty {
+                    if journalListViewModel.isLoading && journalListViewModel.entries.isEmpty {
                         loadingView
-                    } else if journalManager.entries.isEmpty {
+                    } else if journalListViewModel.entries.isEmpty {
                         emptyStateView
                     } else {
                         journalListView
@@ -313,19 +312,18 @@ struct JournalTabContent: View {
                         selectedEntryId = nil
                         navigateToEntry = nil
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            journalManager.refresh()
+                            journalListViewModel.refresh()
                         }
                     } 
                 }
             )) {
                 if let entryId = navigateToEntry ?? selectedEntryId {
                     JournalEditorView(entryId: entryId)
-                        .environmentObject(journalManager)
                 }
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
-                    authManager.logout()
+                    authViewModel.logout()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -333,8 +331,8 @@ struct JournalTabContent: View {
             }
         }
         .onAppear {
-            journalManager.loadEntries()
-            inspirationManager.fetchQuote()
+            journalListViewModel.loadEntries()
+            journalListViewModel.fetchQuote()
             withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
                 animateItems = true
             }
@@ -433,7 +431,7 @@ struct JournalTabContent: View {
     private var journalListView: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 16) {
-                InspirationalQuoteView(inspirationManager: inspirationManager)
+                InspirationalQuoteView(journalListViewModel: journalListViewModel)
                     .padding(.top, 4)
                     .opacity(animateItems ? 1 : 0)
                     .offset(y: animateItems ? 0 : 20)
@@ -442,7 +440,7 @@ struct JournalTabContent: View {
                         value: animateItems
                     )
                 
-                ForEach(Array(journalManager.entries.enumerated()), id: \.element.id) { index, entry in
+                ForEach(Array(journalListViewModel.entries.enumerated()), id: \.element.id) { index, entry in
                     JournalEntryCard(entry: entry) {
                         selectedEntryId = entry.id
                     }
@@ -455,7 +453,7 @@ struct JournalTabContent: View {
                     )
                 }
                 
-                if journalManager.hasMore {
+                if journalListViewModel.hasMore {
                     loadMoreIndicator
                 }
             }
@@ -463,8 +461,8 @@ struct JournalTabContent: View {
             .padding(.bottom, 140)
         }
         .refreshable {
-            journalManager.refresh()
-            inspirationManager.refresh()
+            journalListViewModel.refresh()
+            journalListViewModel.refreshQuote()
         }
     }
     
@@ -529,9 +527,9 @@ struct JournalTabContent: View {
     // MARK: - Load More
     
     private var loadMoreIndicator: some View {
-        Button(action: { journalManager.loadMoreEntries() }) {
+        Button(action: { journalListViewModel.loadMoreEntries() }) {
             HStack(spacing: 8) {
-                if journalManager.isLoading {
+                if journalListViewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
@@ -543,13 +541,13 @@ struct JournalTabContent: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
         }
-        .disabled(journalManager.isLoading)
+        .disabled(journalListViewModel.isLoading)
     }
     
     // MARK: - Helpers
     
     private var headerTitle: String {
-        if let username = authManager.currentUsername, !username.isEmpty {
+        if let username = authViewModel.currentUsername, !username.isEmpty {
             return "\(username)'s Journal"
         }
         return "Journal"
@@ -564,12 +562,12 @@ struct JournalTabContent: View {
     // MARK: - Polling
     
     private func startMoodPolling() {
-        moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak journalManager] _ in
+        moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak journalListViewModel] _ in
             Task { @MainActor in
-                guard let journalManager = journalManager else { return }
-                let hasPendingMoods = journalManager.entries.contains { $0.moodScore == nil }
+                guard let journalListViewModel = journalListViewModel else { return }
+                let hasPendingMoods = journalListViewModel.entries.contains { $0.moodScore == nil }
                 if hasPendingMoods {
-                    journalManager.refresh()
+                    journalListViewModel.refresh()
                 }
             }
         }
@@ -581,11 +579,12 @@ struct JournalTabContent: View {
     }
     
     private func startInspirationPolling() {
-        inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak inspirationManager] _ in
+        inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak journalListViewModel] _ in
             Task { @MainActor in
-                guard let inspirationManager = inspirationManager else { return }
-                if inspirationManager.isNotFound || (inspirationManager.quote == nil && !inspirationManager.isLoading) {
-                    inspirationManager.refresh()
+                guard let journalListViewModel = journalListViewModel else { return }
+                if journalListViewModel.inspirationIsNotFound ||
+                    (journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsLoading) {
+                    journalListViewModel.refreshQuote()
                 }
             }
         }
@@ -602,6 +601,5 @@ struct JournalTabContent: View {
 @available(iOS 17.0, *)
 #Preview {
     MainTabView()
-        .environmentObject(AuthManager())
-        .environmentObject(JournalManager())
+        .environmentObject(AuthViewModelAdapter())
 }

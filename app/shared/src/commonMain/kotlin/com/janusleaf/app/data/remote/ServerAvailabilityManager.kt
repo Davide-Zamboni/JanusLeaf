@@ -8,6 +8,7 @@ import io.ktor.http.HttpStatusCode
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 
 /**
  * Manages server availability and provides failover between multiple backend servers.
@@ -146,6 +147,7 @@ object ServerAvailabilityManager {
             
             isAvailable
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Napier.w("Server $serverUrl is not available: ${e.message}", tag = "ServerAvailability")
             false
         }

@@ -4,8 +4,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.janusleaf.app.ui.navigation.MoodInsightsNavKey
 import com.janusleaf.app.ui.mood.MoodInsightsScreen
-import com.janusleaf.app.viewmodel.MoodInsightsViewModel
-import org.koin.androidx.compose.koinViewModel
+import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
 
 fun EntryProviderScope<NavKey>.moodInsightsEntry(
     onProfileClick: () -> Unit,
@@ -13,7 +12,7 @@ fun EntryProviderScope<NavKey>.moodInsightsEntry(
     onNavigateToInsights: () -> Unit
 ) {
     entry<MoodInsightsNavKey> {
-        val viewModel: MoodInsightsViewModel = koinViewModel()
+        val viewModel: MoodInsightsViewModel = rememberKmpViewModel()
         MoodInsightsScreen(
             viewModel = viewModel,
             onProfileClick = onProfileClick,

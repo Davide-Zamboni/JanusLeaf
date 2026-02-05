@@ -12,6 +12,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CancellationException
 
 /**
  * API service for inspiration endpoints.
@@ -44,6 +45,7 @@ class InspirationApiService(
             val response = apiCall()
             handleResponse(response)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Napier.e("Inspiration API call failed", e, tag = "InspirationApiService")
             when {
                 e.message?.contains("connect", ignoreCase = true) == true ||
@@ -65,6 +67,7 @@ class InspirationApiService(
                 try {
                     InspirationResult.Success(response.body<T>())
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Napier.e("Failed to parse inspiration response", e, tag = "InspirationApiService")
                     InspirationResult.Error(InspirationError.UnknownError("Failed to parse response"))
                 }
@@ -95,6 +98,7 @@ class InspirationApiService(
             val body = response.bodyAsText()
             json.decodeFromString<ErrorResponseDto>(body)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             null
         }
     }

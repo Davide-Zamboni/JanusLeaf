@@ -13,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CancellationException
 
 /**
  * API service for journal endpoints.
@@ -135,6 +136,7 @@ class JournalApiService(
             val response = apiCall()
             handleResponse(response)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Napier.e("Journal API call failed", e, tag = "JournalApiService")
             when {
                 e.message?.contains("connect", ignoreCase = true) == true ||
@@ -156,6 +158,7 @@ class JournalApiService(
                 try {
                     JournalResult.Success(response.body<T>())
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Napier.e("Failed to parse journal response", e, tag = "JournalApiService")
                     JournalResult.Error(JournalError.UnknownError("Failed to parse response"))
                 }
@@ -193,6 +196,7 @@ class JournalApiService(
             val body = response.bodyAsText()
             json.decodeFromString<ErrorResponseDto>(body)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             null
         }
     }

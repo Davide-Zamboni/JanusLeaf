@@ -4,8 +4,7 @@ import SwiftUI
 
 @available(iOS 17.0, *)
 struct ProfileView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var journalManager: JournalManager
+    @StateObject private var profileViewModel = ProfileViewModelAdapter()
     
     @State private var showLogoutConfirmation = false
     @State private var animateItems = false
@@ -49,7 +48,7 @@ struct ProfileView: View {
         }
         .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
             Button("Sign Out", role: .destructive) {
-                authManager.logout()
+                profileViewModel.logout()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -130,13 +129,13 @@ struct ProfileView: View {
                 
                 // User info
                 VStack(spacing: 6) {
-                    if let username = authManager.currentUsername, !username.isEmpty {
+                    if let username = profileViewModel.currentUsername, !username.isEmpty {
                         Text(username)
                             .font(.system(size: 22, weight: .bold))
                             .foregroundColor(.white)
                     }
                     
-                    if let email = authManager.currentUserEmail {
+                    if let email = profileViewModel.currentUserEmail {
                         Text(email)
                             .font(.system(size: 14))
                             .foregroundColor(.white.opacity(0.6))
@@ -177,7 +176,7 @@ struct ProfileView: View {
             HStack(spacing: 0) {
                 // Total entries
                 ProfileStatItem(
-                    value: "\(journalManager.entries.count)",
+                    value: "\(profileViewModel.entries.count)",
                     label: "Entries",
                     icon: "doc.text.fill"
                 )
@@ -290,17 +289,17 @@ struct ProfileView: View {
     // MARK: - Helpers
     
     private var userInitial: String {
-        if let username = authManager.currentUsername, let first = username.first {
+        if let username = profileViewModel.currentUsername, let first = username.first {
             return String(first).uppercased()
         }
-        if let email = authManager.currentUserEmail, let first = email.first {
+        if let email = profileViewModel.currentUserEmail, let first = email.first {
             return String(first).uppercased()
         }
         return "U"
     }
     
     private var averageMoodText: String {
-        let moods = journalManager.entries.compactMap { $0.moodScore?.intValue }
+        let moods = profileViewModel.entries.compactMap { $0.moodScore?.intValue }
         guard !moods.isEmpty else { return "--" }
         let average = Double(moods.reduce(0, +)) / Double(moods.count)
         return String(format: "%.1f", average)
@@ -312,7 +311,7 @@ struct ProfileView: View {
         var streak = 0
         var currentDate = Date()
         
-        let sortedEntries = journalManager.entries.sorted { entry1, entry2 in
+        let sortedEntries = profileViewModel.entries.sorted { entry1, entry2 in
             let date1 = calendar.date(from: DateComponents(
                 year: Int(entry1.entryDate.year),
                 month: Int(entry1.entryDate.monthNumber),
@@ -418,6 +417,4 @@ struct SettingsRow: View {
 @available(iOS 17.0, *)
 #Preview {
     ProfileView()
-        .environmentObject(AuthManager())
-        .environmentObject(JournalManager())
 }
