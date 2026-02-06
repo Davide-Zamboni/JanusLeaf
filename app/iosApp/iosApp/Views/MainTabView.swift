@@ -22,7 +22,6 @@ struct MainTabView: View {
                         journalListViewModel: journalListViewModel,
                         navigateToEntry: $navigateToEntry,
                         isEditorPresented: $isEditorPresented,
-                        isCreatingEntry: $isCreatingEntry,
                         createNewEntry: createNewEntry
                     )
                 } else {
@@ -277,7 +276,6 @@ struct JournalTabContent: View {
     
     @Binding var navigateToEntry: String?
     @Binding var isEditorPresented: Bool
-    @Binding var isCreatingEntry: Bool
     let createNewEntry: () -> Void
     
     @State private var selectedEntryId: String? = nil
