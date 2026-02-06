@@ -183,4 +183,8 @@ class JournalListViewModel(
     fun clearInspirationError() {
         _inspirationState.update { it.copy(errorMessage = null) }
     }
+
+    fun logout() {
+        authStore.logout()
+    }
 }

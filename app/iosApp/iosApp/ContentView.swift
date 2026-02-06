@@ -4,22 +4,21 @@ import KMPObservableViewModelSwiftUI
 
 @available(iOS 17.0, *)
 struct ContentView: View {
-    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
+    @StateViewModel private var sessionViewModel = SharedModule.shared.createObservableSessionViewModel()
     
     var body: some View {
         Group {
-            if authViewModel.isAuthenticated {
+            if sessionViewModel.isAuthenticated {
                 MainTabView()
             } else {
                 AuthView()
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authViewModel.isAuthenticated)
+        .animation(.easeInOut(duration: 0.3), value: sessionViewModel.isAuthenticated)
     }
 }
 
 @available(iOS 17.0, *)
 #Preview {
     ContentView()
-        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

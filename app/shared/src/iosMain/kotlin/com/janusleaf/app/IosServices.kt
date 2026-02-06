@@ -16,15 +16,16 @@ import com.janusleaf.app.model.cache.InMemoryJournalCache
 import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
-import com.janusleaf.app.presentation.viewmodel.AuthViewModel
+import com.janusleaf.app.presentation.viewmodel.AuthFormViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalEditorViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableAuthViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableAuthFormViewModel
 import com.janusleaf.app.presentation.viewmodel.ObservableJournalEditorViewModel
 import com.janusleaf.app.presentation.viewmodel.ObservableJournalListViewModel
 import com.janusleaf.app.presentation.viewmodel.ObservableMoodInsightsViewModel
 import com.janusleaf.app.presentation.viewmodel.ObservableProfileViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableSessionViewModel
 import com.janusleaf.app.presentation.viewmodel.ProfileViewModel
 import com.janusleaf.app.presentation.viewmodel.WelcomeViewModel
 import io.github.aakira.napier.Napier
@@ -45,9 +46,10 @@ object SharedModule {
         InspirationStore(inspirationApi, authApi, tokenStorage, InMemoryInspirationCache())
     }
 
-    fun createAuthViewModel(): AuthViewModel = AuthViewModel(authStore)
+    fun createAuthFormViewModel(): AuthFormViewModel = AuthFormViewModel(authStore)
 
-    fun createObservableAuthViewModel(): ObservableAuthViewModel = ObservableAuthViewModel(authStore)
+    fun createObservableAuthFormViewModel(): ObservableAuthFormViewModel =
+        ObservableAuthFormViewModel(createAuthFormViewModel())
 
     fun createJournalListViewModel(): JournalListViewModel =
         JournalListViewModel(authStore, journalStore, inspirationStore)
@@ -60,7 +62,7 @@ object SharedModule {
     fun createObservableJournalEditorViewModel(): ObservableJournalEditorViewModel =
         ObservableJournalEditorViewModel(createJournalEditorViewModel())
 
-    fun createMoodInsightsViewModel(): MoodInsightsViewModel = MoodInsightsViewModel(journalStore)
+    fun createMoodInsightsViewModel(): MoodInsightsViewModel = MoodInsightsViewModel(journalStore, authStore)
 
     fun createObservableMoodInsightsViewModel(): ObservableMoodInsightsViewModel =
         ObservableMoodInsightsViewModel(createMoodInsightsViewModel())
@@ -71,6 +73,9 @@ object SharedModule {
         ObservableProfileViewModel(createProfileViewModel())
 
     fun createWelcomeViewModel(): WelcomeViewModel = WelcomeViewModel(authStore)
+
+    fun createObservableSessionViewModel(): ObservableSessionViewModel =
+        ObservableSessionViewModel(createWelcomeViewModel())
 
     fun parseLocalDate(iso: String?): LocalDate? = try {
         iso?.let(LocalDate::parse)

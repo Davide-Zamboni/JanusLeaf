@@ -1,7 +1,9 @@
 package com.janusleaf.app.presentation.viewmodel
 
 import com.janusleaf.app.domain.model.JournalResult
+import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.JournalStore
+import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.presentation.state.MoodInsightsUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +15,13 @@ import kotlinx.coroutines.flow.update
 private const val PAGE_SIZE = 20
 
 class MoodInsightsViewModel(
-    private val journalStore: JournalStore
+    private val journalStore: JournalStore,
+    private val authStore: AuthStore
 ) : KmpViewModel() {
 
     private val _uiState = MutableStateFlow(MoodInsightsUiState())
     val uiState: StateFlow<MoodInsightsUiState> = _uiState.asStateFlow()
+    val authState: StateFlow<AuthUiState> = authStore.uiState
 
     init {
         journalStore.observeEntries()
@@ -49,5 +53,9 @@ class MoodInsightsViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun logout() {
+        authStore.logout()
     }
 }

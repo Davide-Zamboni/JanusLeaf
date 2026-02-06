@@ -82,7 +82,6 @@ enum MoodHelpers {
 
 @available(iOS 17.0, *)
 struct MoodInsightsView: View {
-    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     @StateViewModel private var moodInsightsViewModel = SharedModule.shared.createObservableMoodInsightsViewModel()
     
     @State private var selectedPeriod: TimePeriod = .sixMonths
@@ -128,7 +127,7 @@ struct MoodInsightsView: View {
         .ignoresSafeArea()
         .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
             Button("Sign Out", role: .destructive) {
-                authViewModel.logout()
+                moodInsightsViewModel.logout()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -839,5 +838,4 @@ struct MoodCategoryRow: View {
 @available(iOS 17.0, *)
 #Preview {
     MoodInsightsView()
-        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

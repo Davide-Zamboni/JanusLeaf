@@ -4,7 +4,6 @@ import KMPObservableViewModelSwiftUI
 
 @available(iOS 17.0, *)
 struct JournalListView: View {
-    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     @StateViewModel private var journalListViewModel = SharedModule.shared.createObservableJournalListViewModel()
     
     @State private var selectedEntryId: String? = nil
@@ -50,7 +49,7 @@ struct JournalListView: View {
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
-                    authViewModel.logout()
+                    journalListViewModel.logout()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -399,7 +398,7 @@ struct JournalListView: View {
     // MARK: - Helpers
     
     private var headerTitle: String {
-        if let username = authViewModel.currentUsername, !username.isEmpty {
+        if let username = journalListViewModel.currentUsername, !username.isEmpty {
             return "\(username)'s Journal"
         }
         return "Journal"
@@ -604,5 +603,4 @@ struct ScaleButtonStyle: ButtonStyle {
 @available(iOS 17.0, *)
 #Preview {
     JournalListView()
-        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }
