@@ -4,20 +4,22 @@ import Shared
 // MARK: - Inspirational Quote Card
 
 struct InspirationalQuoteView: View {
-    let journalListViewModel: ObservableJournalListViewModel
+    let isLoading: Bool
+    let quote: InspirationalQuote?
+    let isNotFound: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            if journalListViewModel.inspirationIsLoading && journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsNotFound {
+            if isLoading && quote == nil && !isNotFound {
                 InspirationLoadingView()
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } else if journalListViewModel.inspirationIsNotFound {
+            } else if isNotFound {
                 InspirationPendingView()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.9)),
                         removal: .opacity
                     ))
-            } else if let quote = journalListViewModel.inspirationQuote {
+            } else if let quote = quote {
                 QuoteContentView(
                     quote: quote.quote,
                     tags: quote.tags.map { $0 },
@@ -29,9 +31,9 @@ struct InspirationalQuoteView: View {
                 ))
             }
         }
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: journalListViewModel.inspirationQuote?.id)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: journalListViewModel.inspirationIsNotFound)
-        .animation(.easeInOut(duration: 0.3), value: journalListViewModel.inspirationIsLoading)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: quote?.id)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isNotFound)
+        .animation(.easeInOut(duration: 0.3), value: isLoading)
     }
 
     private func formattedGeneratedDate(for quote: InspirationalQuote) -> String {

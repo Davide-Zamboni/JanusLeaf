@@ -20,13 +20,6 @@ import com.janusleaf.app.presentation.viewmodel.AuthFormViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalEditorViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableAuthFormViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableJournalEditorViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableJournalListViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableMoodInsightsViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableProfileViewModel
-import com.janusleaf.app.presentation.viewmodel.ObservableSessionViewModel
-import com.janusleaf.app.presentation.viewmodel.ProfileViewModel
 import com.janusleaf.app.presentation.viewmodel.WelcomeViewModel
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CancellationException
@@ -48,34 +41,14 @@ object SharedModule {
 
     fun createAuthFormViewModel(): AuthFormViewModel = AuthFormViewModel(authStore)
 
-    fun createObservableAuthFormViewModel(): ObservableAuthFormViewModel =
-        ObservableAuthFormViewModel(createAuthFormViewModel())
-
     fun createJournalListViewModel(): JournalListViewModel =
         JournalListViewModel(authStore, journalStore, inspirationStore)
 
-    fun createObservableJournalListViewModel(): ObservableJournalListViewModel =
-        ObservableJournalListViewModel(createJournalListViewModel())
-
     fun createJournalEditorViewModel(): JournalEditorViewModel = JournalEditorViewModel(journalStore)
-
-    fun createObservableJournalEditorViewModel(): ObservableJournalEditorViewModel =
-        ObservableJournalEditorViewModel(createJournalEditorViewModel())
 
     fun createMoodInsightsViewModel(): MoodInsightsViewModel = MoodInsightsViewModel(journalStore, authStore)
 
-    fun createObservableMoodInsightsViewModel(): ObservableMoodInsightsViewModel =
-        ObservableMoodInsightsViewModel(createMoodInsightsViewModel())
-
-    fun createProfileViewModel(): ProfileViewModel = ProfileViewModel(authStore, journalStore)
-
-    fun createObservableProfileViewModel(): ObservableProfileViewModel =
-        ObservableProfileViewModel(createProfileViewModel())
-
     fun createWelcomeViewModel(): WelcomeViewModel = WelcomeViewModel(authStore)
-
-    fun createObservableSessionViewModel(): ObservableSessionViewModel =
-        ObservableSessionViewModel(createWelcomeViewModel())
 
     fun parseLocalDate(iso: String?): LocalDate? = try {
         iso?.let(LocalDate::parse)

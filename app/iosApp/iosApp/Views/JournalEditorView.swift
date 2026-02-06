@@ -1,6 +1,5 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
 
 private func toSwiftBool(_ value: Bool) -> Bool { value }
 private func toSwiftBool(_ value: KotlinBoolean) -> Bool { value.boolValue }
@@ -11,13 +10,21 @@ struct JournalEditorView: View {
     
     let entryId: String
 
-    @StateViewModel private var editorViewModel = SharedModule.shared.createObservableJournalEditorViewModel()
+    @StateObject private var editorViewModelOwner = SharedViewModelOwner(
+        viewModel: SharedModule.shared.createJournalEditorViewModel(),
+        onDeinit: { (viewModel: JournalEditorViewModel) in
+            viewModel.clearBoundEntry()
+            viewModel.clear()
+        }
+    )
     
     @State private var title: String = ""
     @State private var bodyText: String = ""
-    @State private var moodScore: Int? = nil
     @State private var entryDate: Kotlinx_datetimeLocalDate? = nil
-    @State private var version: Int64 = 0
+    @State private var viewModelErrorMessage: String? = nil
+    @State private var entryLoadErrorMessage: String? = nil
+    @State private var lastSavedAtEpochMillis: KotlinLong? = nil
+    @State private var hasInitializedEntry = false
     
     @State private var showDeleteConfirmation = false
     @State private var hasUnsavedBodyChanges = false
@@ -35,6 +42,10 @@ struct JournalEditorView: View {
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
 
+    private var editorViewModel: JournalEditorViewModel {
+        editorViewModelOwner.viewModel
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
@@ -44,6 +55,8 @@ struct JournalEditorView: View {
                 // Content
                 if isLoading {
                     loadingContent
+                } else if let entryLoadErrorMessage {
+                    errorLoadingContent(message: entryLoadErrorMessage)
                 } else {
                     editorContent
                 }
@@ -60,21 +73,23 @@ struct JournalEditorView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { loadEntry() }
-        .onDisappear { editorViewModel.clearCurrentEntry() }
+        .task {
+            await observeEditorUiState()
+        }
         .confirmationDialog("Delete Entry", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) { deleteEntry() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This entry will be permanently deleted.")
         }
-        .onChange(of: editorViewModel.errorMessage) { _, error in
-            if error != nil {
+        .onChange(of: viewModelErrorMessage) { _, error in
+            guard error != nil else { return }
+            if hasInitializedEntry {
                 handleSaveError()
-                editorViewModel.clearError()
             } else {
-                // Success - reset failure count
-                consecutiveFailures = 0
+                entryLoadErrorMessage = error
             }
+            editorViewModel.clearError()
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showErrorBanner)
     }
@@ -219,7 +234,7 @@ struct JournalEditorView: View {
                     showStrikethrough: showStrikethrough
                 ) { newValue in
                     hasUnsavedBodyChanges = true
-                    editorViewModel.updateBody(body: newValue, entryId: entryId)
+                    editorViewModel.updateBody(entryId: entryId, body: newValue)
                 }
             }
             .padding(16)
@@ -244,6 +259,35 @@ struct JournalEditorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.05, green: 0.06, blue: 0.08))
     }
+
+    private func errorLoadingContent(message: String) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 28))
+                .foregroundColor(.orange)
+
+            Text("Unable to load this entry")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+
+            Text(message)
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.65))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+
+            Button("Try Again") {
+                loadEntry()
+            }
+            .buttonStyle(.borderedProminent)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
+    }
     
     // MARK: - Actions
     
@@ -252,7 +296,7 @@ struct JournalEditorView: View {
         
         // Save title first if changed, then handle body changes
         if hasTitleChanges {
-            editorViewModel.updateTitle(title: title, entryId: entryId) { _ in
+            editorViewModel.updateTitle(entryId: entryId, title: title) { _ in
                 if hasUnsavedBodyChanges {
                     editorViewModel.forceSave(entryId: entryId) { _ in dismiss() }
                 } else {
@@ -267,21 +311,16 @@ struct JournalEditorView: View {
     }
     
     private func loadEntry() {
-        editorViewModel.loadEntry(id: entryId) { journal in
-            guard let journal = journal else { return }
-            self.title = journal.title
-            self.originalTitle = journal.title
-            self.bodyText = journal.body
-            self.moodScore = journal.moodScore.map { Int($0.intValue) }
-            self.entryDate = journal.entryDate
-            self.version = journal.version
-            self.isLoading = false
-        }
+        hasInitializedEntry = false
+        isLoading = true
+        entryLoadErrorMessage = nil
+        editorViewModel.bindEntry(entryId: entryId)
+        editorViewModel.loadEntry(entryId: entryId)
     }
     
     private func saveTitle() {
         guard !title.isEmpty, title != originalTitle else { return }
-        editorViewModel.updateTitle(title: title, entryId: entryId) { success in
+        editorViewModel.updateTitle(entryId: entryId, title: title) { success in
             if toSwiftBool(success) {
                 self.originalTitle = self.title
             }
@@ -296,6 +335,39 @@ struct JournalEditorView: View {
     
     private func formatDate(_ date: Kotlinx_datetimeLocalDate) -> String {
         "\(date.month.name.prefix(3)) \(date.dayOfMonth), \(date.year)"
+    }
+
+    @MainActor
+    private func observeEditorUiState() async {
+        for await state in editorViewModel.uiState {
+            viewModelErrorMessage = state.errorMessage
+            if !hasInitializedEntry {
+                isLoading = state.isLoading
+                if !state.isLoading, state.entry == nil, let error = state.errorMessage {
+                    entryLoadErrorMessage = error
+                }
+            }
+
+            if state.lastSavedAtEpochMillis != lastSavedAtEpochMillis {
+                lastSavedAtEpochMillis = state.lastSavedAtEpochMillis
+                if state.lastSavedAtEpochMillis != nil {
+                    consecutiveFailures = 0
+                    hasUnsavedBodyChanges = false
+                }
+            }
+
+            guard let entry = state.entry else { continue }
+            entryDate = entry.entryDate
+            entryLoadErrorMessage = nil
+
+            if !hasInitializedEntry {
+                title = entry.title
+                originalTitle = entry.title
+                bodyText = entry.body
+                isLoading = false
+                hasInitializedEntry = true
+            }
+        }
     }
 }
 

@@ -1,6 +1,5 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
 
 // MARK: - Time Period
 
@@ -82,19 +81,28 @@ enum MoodHelpers {
 
 @available(iOS 17.0, *)
 struct MoodInsightsView: View {
-    @StateViewModel private var moodInsightsViewModel = SharedModule.shared.createObservableMoodInsightsViewModel()
+    @StateObject private var moodInsightsViewModelOwner = SharedViewModelOwner(
+        viewModel: SharedModule.shared.createMoodInsightsViewModel(),
+        onDeinit: { (viewModel: MoodInsightsViewModel) in
+            viewModel.clear()
+        }
+    )
     
     @State private var selectedPeriod: TimePeriod = .sixMonths
+    @State private var entries: [JournalPreview] = []
     @State private var moodData: [MoodDataPoint] = []
     @State private var animateChart: Bool = false
     @State private var selectedDataPoint: MoodDataPoint? = nil
-    @State private var showDetail: Bool = false
     @State private var showLogoutConfirmation = false
     
     // Stats
     @State private var averageMood: Double = 0
     @State private var totalEntries: Int = 0
     @State private var moodTrend: String = "stable"
+
+    private var moodInsightsViewModel: MoodInsightsViewModel {
+        moodInsightsViewModelOwner.viewModel
+    }
     
     var body: some View {
         ZStack {
@@ -140,6 +148,9 @@ struct MoodInsightsView: View {
                 animateChart = true
             }
         }
+        .task {
+            await observeMoodInsightsUiState()
+        }
         .onChange(of: selectedPeriod) { _, _ in
             withAnimation(.easeInOut(duration: 0.3)) {
                 animateChart = false
@@ -149,7 +160,7 @@ struct MoodInsightsView: View {
                 animateChart = true
             }
         }
-        .onChange(of: moodInsightsViewModel.entries) { _, _ in
+        .onChange(of: entries) { _, _ in
             loadMoodData()
         }
     }
@@ -475,7 +486,7 @@ struct MoodInsightsView: View {
         let startDate = calendar.date(byAdding: .day, value: -selectedPeriod.days, to: endDate) ?? endDate
         
         // Convert journal entries to mood data points
-        moodData = moodInsightsViewModel.entries.compactMap { entry in
+        moodData = entries.compactMap { entry in
             guard let moodScore = entry.moodScore else { return nil }
             
             // Convert Kotlin LocalDate to Swift Date
@@ -524,6 +535,13 @@ struct MoodInsightsView: View {
         } else {
             averageMood = 0
             moodTrend = "stable"
+        }
+    }
+
+    @MainActor
+    private func observeMoodInsightsUiState() async {
+        for await state in moodInsightsViewModel.uiState {
+            entries = state.entries
         }
     }
 }
