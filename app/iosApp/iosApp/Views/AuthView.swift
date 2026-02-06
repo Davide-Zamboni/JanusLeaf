@@ -1,9 +1,15 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
 
 struct AuthView: View {
-    @StateViewModel private var authViewModel = SharedModule.shared.createObservableAuthFormViewModel()
+    @StateObject private var authViewModelOwner = SharedViewModelOwner(
+        viewModel: SharedModule.shared.createAuthFormViewModel(),
+        onDeinit: { (viewModel: AuthFormViewModel) in
+            viewModel.clear()
+        }
+    )
+    @State private var isLoading = false
+    @State private var errorMessage: String? = nil
     
     @State private var email = ""
     @State private var password = ""
@@ -14,8 +20,11 @@ struct AuthView: View {
     @State private var showConfirmPassword = false
     
     // Animation states
-    @State private var animateGradient = false
     @State private var formAppeared = false
+
+    private var authViewModel: AuthFormViewModel {
+        authViewModelOwner.viewModel
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -59,6 +68,9 @@ struct AuthView: View {
             }
         }
         .ignoresSafeArea()
+        .task {
+            await observeAuthState()
+        }
         .onAppear {
             withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
                 formAppeared = true
@@ -95,7 +107,7 @@ struct AuthView: View {
     private var glassFormCard: some View {
         VStack(spacing: 16) {
             // Error message
-            if let error = authViewModel.errorMessage {
+            if let error = errorMessage {
                 errorBanner(message: error)
             }
             
@@ -175,7 +187,7 @@ struct AuthView: View {
             // Submit button
             GlassButton(
                 title: isRegistering ? "Create Account" : "Sign In",
-                isLoading: authViewModel.isLoading,
+                isLoading: isLoading,
                 isEnabled: isFormValid,
                 action: submit
             )
@@ -271,6 +283,16 @@ struct AuthView: View {
             authViewModel.register(email: email, username: username, password: password)
         } else {
             authViewModel.login(email: email, password: password)
+        }
+    }
+}
+
+private extension AuthView {
+    @MainActor
+    func observeAuthState() async {
+        for await state in authViewModel.uiState {
+            isLoading = state.isLoading
+            errorMessage = state.errorMessage
         }
     }
 }

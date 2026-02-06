@@ -1,17 +1,25 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
 
 // MARK: - Main Tab View
 
 @available(iOS 17.0, *)
 struct MainTabView: View {
-    @StateViewModel private var journalListViewModel = SharedModule.shared.createObservableJournalListViewModel()
+    @StateObject private var journalListViewModelOwner = SharedViewModelOwner(
+        viewModel: SharedModule.shared.createJournalListViewModel(),
+        onDeinit: { (viewModel: JournalListViewModel) in
+            viewModel.clear()
+        }
+    )
     
     @State private var selectedTab: Int = 0
     @State private var isCreatingEntry = false
     @State private var navigateToEntry: String? = nil
     @State private var isEditorPresented = false
+
+    private var journalListViewModel: JournalListViewModel {
+        journalListViewModelOwner.viewModel
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -22,7 +30,6 @@ struct MainTabView: View {
                         journalListViewModel: journalListViewModel,
                         navigateToEntry: $navigateToEntry,
                         isEditorPresented: $isEditorPresented,
-                        isCreatingEntry: $isCreatingEntry,
                         createNewEntry: createNewEntry
                     )
                 } else {
@@ -273,11 +280,10 @@ struct LiquidGlassButtonStyle: ButtonStyle {
 
 @available(iOS 17.0, *)
 struct JournalTabContent: View {
-    let journalListViewModel: ObservableJournalListViewModel
+    let journalListViewModel: JournalListViewModel
     
     @Binding var navigateToEntry: String?
     @Binding var isEditorPresented: Bool
-    @Binding var isCreatingEntry: Bool
     let createNewEntry: () -> Void
     
     @State private var selectedEntryId: String? = nil
@@ -285,6 +291,13 @@ struct JournalTabContent: View {
     @State private var moodPollingTimer: Timer? = nil
     @State private var inspirationPollingTimer: Timer? = nil
     @State private var showLogoutConfirmation = false
+    @State private var entries: [JournalPreview] = []
+    @State private var hasMore = false
+    @State private var isLoading = false
+    @State private var currentUsername: String? = nil
+    @State private var inspirationIsLoading = false
+    @State private var inspirationIsNotFound = false
+    @State private var inspirationQuote: InspirationalQuote? = nil
     
     private var isNavigating: Bool {
         selectedEntryId != nil || navigateToEntry != nil
@@ -298,9 +311,9 @@ struct JournalTabContent: View {
                 VStack(spacing: 0) {
                     headerView
                     
-                    if journalListViewModel.isLoading && journalListViewModel.entries.isEmpty {
+                    if isLoading && entries.isEmpty {
                         loadingView
-                    } else if journalListViewModel.entries.isEmpty {
+                    } else if entries.isEmpty {
                         emptyStateView
                     } else {
                         journalListView
@@ -316,7 +329,7 @@ struct JournalTabContent: View {
                         selectedEntryId = nil
                         navigateToEntry = nil
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            journalListViewModel.refresh()
+                            journalListViewModel.loadEntries()
                         }
                     } 
                 }
@@ -346,6 +359,15 @@ struct JournalTabContent: View {
         .onDisappear {
             stopMoodPolling()
             stopInspirationPolling()
+        }
+        .task {
+            await observeJournalUiState()
+        }
+        .task {
+            await observeAuthState()
+        }
+        .task {
+            await observeInspirationState()
         }
         .onChange(of: navigateToEntry) { _, newValue in
             if newValue != nil {
@@ -435,7 +457,11 @@ struct JournalTabContent: View {
     private var journalListView: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 16) {
-                InspirationalQuoteView(journalListViewModel: journalListViewModel)
+                InspirationalQuoteView(
+                    isLoading: inspirationIsLoading,
+                    quote: inspirationQuote,
+                    isNotFound: inspirationIsNotFound
+                )
                     .padding(.top, 4)
                     .opacity(animateItems ? 1 : 0)
                     .offset(y: animateItems ? 0 : 20)
@@ -444,7 +470,7 @@ struct JournalTabContent: View {
                         value: animateItems
                     )
                 
-                ForEach(Array(journalListViewModel.entries.enumerated()), id: \.element.id) { index, entry in
+                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                     JournalEntryCard(entry: entry) {
                         selectedEntryId = entry.id
                     }
@@ -457,7 +483,7 @@ struct JournalTabContent: View {
                     )
                 }
                 
-                if journalListViewModel.hasMore {
+                if hasMore {
                     loadMoreIndicator
                 }
             }
@@ -465,8 +491,8 @@ struct JournalTabContent: View {
             .padding(.bottom, 140)
         }
         .refreshable {
-            journalListViewModel.refresh()
-            journalListViewModel.refreshQuote()
+            journalListViewModel.loadEntries()
+            journalListViewModel.fetchQuote()
         }
     }
     
@@ -533,7 +559,7 @@ struct JournalTabContent: View {
     private var loadMoreIndicator: some View {
         Button(action: { journalListViewModel.loadMoreEntries() }) {
             HStack(spacing: 8) {
-                if journalListViewModel.isLoading {
+                if isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
@@ -545,13 +571,13 @@ struct JournalTabContent: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
         }
-        .disabled(journalListViewModel.isLoading)
+        .disabled(isLoading)
     }
     
     // MARK: - Helpers
     
     private var headerTitle: String {
-        if let username = journalListViewModel.currentUsername, !username.isEmpty {
+        if let username = currentUsername, !username.isEmpty {
             return "\(username)'s Journal"
         }
         return "Journal"
@@ -569,9 +595,9 @@ struct JournalTabContent: View {
         moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak journalListViewModel] _ in
             Task { @MainActor in
                 guard let journalListViewModel = journalListViewModel else { return }
-                let hasPendingMoods = journalListViewModel.entries.contains { $0.moodScore == nil }
+                let hasPendingMoods = entries.contains { $0.moodScore == nil }
                 if hasPendingMoods {
-                    journalListViewModel.refresh()
+                    journalListViewModel.loadEntries()
                 }
             }
         }
@@ -586,9 +612,8 @@ struct JournalTabContent: View {
         inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak journalListViewModel] _ in
             Task { @MainActor in
                 guard let journalListViewModel = journalListViewModel else { return }
-                if journalListViewModel.inspirationIsNotFound ||
-                    (journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsLoading) {
-                    journalListViewModel.refreshQuote()
+                if inspirationIsNotFound || (inspirationQuote == nil && !inspirationIsLoading) {
+                    journalListViewModel.fetchQuote()
                 }
             }
         }
@@ -597,6 +622,31 @@ struct JournalTabContent: View {
     private func stopInspirationPolling() {
         inspirationPollingTimer?.invalidate()
         inspirationPollingTimer = nil
+    }
+
+    @MainActor
+    private func observeJournalUiState() async {
+        for await state in journalListViewModel.uiState {
+            entries = state.entries
+            hasMore = state.hasMore
+            isLoading = state.isLoading
+        }
+    }
+
+    @MainActor
+    private func observeAuthState() async {
+        for await state in journalListViewModel.authState {
+            currentUsername = state.user?.username
+        }
+    }
+
+    @MainActor
+    private func observeInspirationState() async {
+        for await state in journalListViewModel.inspirationState {
+            inspirationIsLoading = state.isLoading
+            inspirationIsNotFound = state.isNotFound
+            inspirationQuote = state.quote
+        }
     }
 }
 

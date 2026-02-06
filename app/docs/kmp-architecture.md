@@ -24,7 +24,7 @@ This doc does not repeat build/setup steps or the tech stack.
   - Wires Koin DI modules and hosts the navigation flow.
 - `app/iosApp`
   - iOS-only UI (SwiftUI).
-  - Uses Swift adapters to bridge Kotlin Flows and types into SwiftUI.
+  - Uses SKIE-generated interop for Kotlin `Flow`/`StateFlow` in SwiftUI.
 
 ## End-to-End Data Flow (Example: Journal List)
 
@@ -32,7 +32,7 @@ This is the most common flow pattern. Other features follow the same shape.
 
 1. UI triggers an action.
    - Android: Compose screen calls a shared ViewModel method.
-   - iOS: SwiftUI view calls an observable shared ViewModel method.
+   - iOS: SwiftUI view calls a shared ViewModel method directly.
 2. Shared ViewModel delegates to a Store.
    - Example: `JournalListViewModel.loadEntries()` calls `JournalStore.loadEntries()`.
 3. Store calls a Repository interface.
@@ -49,7 +49,7 @@ This is the most common flow pattern. Other features follow the same shape.
    - ViewModels expose UI state objects (`JournalListUiState`, etc.).
 8. UI re-renders with the updated state.
    - Android: `collectAsStateWithLifecycle()` on `StateFlow`.
-   - iOS: `@StateViewModel` / `@EnvironmentViewModel` observes observable shared ViewModels.
+   - iOS: SKIE `Flow` observation (`for await` in SwiftUI `.task`).
 
 ## Shared Module Architecture
 
@@ -157,22 +157,12 @@ iOS does not use Koin. Instead, it uses a Kotlin singleton that builds its own g
 
 This is why iOS does not call Koin. It calls `SharedModule.shared.createXViewModel()`.
 
-### KMP-ObservableViewModel bridge
+### iOS Interop Strategy
 
-iOS now uses `KMP-ObservableViewModel` instead of Swift adapters.
-
-- Shared wraps feature ViewModels in observable Kotlin classes:
-  - `ObservableAuthFormViewModel`
-  - `ObservableSessionViewModel`
-  - `ObservableJournalListViewModel`
-  - `ObservableJournalEditorViewModel`
-  - `ObservableMoodInsightsViewModel`
-  - `ObservableProfileViewModel`
-- These wrappers expose SwiftUI-friendly fields and forward actions to existing shared ViewModels.
-- Wrappers are created via `SharedModule.shared.createObservableXViewModel()`.
-- SwiftUI reads these wrappers directly using:
-  - `@StateViewModel` for screen-owned lifecycle
-  - `@EnvironmentViewModel` only when one observable ViewModel is intentionally shared by a subtree
+iOS uses one interop strategy:
+- `SKIE` plugin in `shared` generates Swift-friendly async access for Kotlin `Flow`/`StateFlow`.
+- SwiftUI screens keep shared ViewModels in `@State`, then collect state in `.task` with `for await`.
+- There are no per-screen observable adapter classes in iOS.
 
 ### Type conversion patterns
 
@@ -184,9 +174,9 @@ Kotlin/Native types do not always map 1:1 to Swift types:
 ### SwiftUI Ownership and Lifecycle
 
 Key rules to avoid leaks and unexpected updates:
-- Use `@StateViewModel` for screen-owned shared ViewModels.
+- Use direct shared ViewModels with SKIE on every screen.
 - Keep auth state inside each screen's own ViewModel instead of a global auth environment object.
-- Do not wrap shared ViewModels in per-feature Swift `ObservableObject` adapters unless absolutely necessary.
+- Always call `clear()` when a directly-owned shared ViewModel should release its coroutine scope.
 
 ## Platform Differences That Affect Behavior
 
@@ -206,6 +196,6 @@ Key rules to avoid leaks and unexpected updates:
 5. Add or extend a Store in `shared/model/store`.
 6. Create a shared ViewModel in `shared/presentation/viewmodel`.
 7. Android: register the ViewModel in `composeApp/di/UiModule.kt`.
-8. iOS: expose an observable shared ViewModel via `SharedModule` and bind it with `@StateViewModel` / `@EnvironmentViewModel`.
+8. iOS: bind the shared ViewModel directly and observe `Flow`/`StateFlow` via SKIE `for await` in SwiftUI.
 
 This keeps Android and iOS behavior consistent while sharing the logic in Kotlin.

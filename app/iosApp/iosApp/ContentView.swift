@@ -1,20 +1,39 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
 
 @available(iOS 17.0, *)
 struct ContentView: View {
-    @StateViewModel private var sessionViewModel = SharedModule.shared.createObservableSessionViewModel()
+    @StateObject private var sessionViewModelOwner = SharedViewModelOwner(
+        viewModel: SharedModule.shared.createWelcomeViewModel(),
+        onDeinit: { (viewModel: WelcomeViewModel) in
+            viewModel.clear()
+        }
+    )
+    @State private var isAuthenticated = false
+
+    private var sessionViewModel: WelcomeViewModel {
+        sessionViewModelOwner.viewModel
+    }
     
     var body: some View {
         Group {
-            if sessionViewModel.isAuthenticated {
+            if isAuthenticated {
                 MainTabView()
             } else {
                 AuthView()
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: sessionViewModel.isAuthenticated)
+        .animation(.easeInOut(duration: 0.3), value: isAuthenticated)
+        .task {
+            await observeSessionAuthState()
+        }
+    }
+    
+    @MainActor
+    private func observeSessionAuthState() async {
+        for await authState in sessionViewModel.authState {
+            isAuthenticated = authState.isAuthenticated
+        }
     }
 }
 

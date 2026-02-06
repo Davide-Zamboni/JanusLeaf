@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.jetbrains.kotlin.serialization)
+    alias(libs.plugins.skie)
 }
 
 // Generate BuildConfig for common code (configuration cache compatible)
@@ -92,7 +93,6 @@ kotlin {
 
                 // DI
                 api(libs.koin.core)
-                api(libs.kmp.observableviewmodel.core)
 
                 // Logging
                 api(libs.napier)

@@ -1,447 +1,30 @@
 import SwiftUI
 import Shared
-import KMPObservableViewModelSwiftUI
-
-@available(iOS 17.0, *)
-struct JournalListView: View {
-    @StateViewModel private var journalListViewModel = SharedModule.shared.createObservableJournalListViewModel()
-    
-    @State private var selectedEntryId: String? = nil
-    @State private var showLogoutConfirmation = false
-    @State private var animateItems = false
-    @State private var moodPollingTimer: Timer? = nil
-    @State private var inspirationPollingTimer: Timer? = nil
-    @State private var isCreatingEntry = false
-    
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Animated background
-                JournalBackground()
-                
-                VStack(spacing: 0) {
-                    // Custom header
-                    headerView
-                    
-                    if journalListViewModel.isLoading && journalListViewModel.entries.isEmpty {
-                        loadingView
-                    } else if journalListViewModel.entries.isEmpty {
-                        emptyStateView
-                    } else {
-                        journalListView
-                    }
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: Binding(
-                get: { selectedEntryId != nil },
-                set: { 
-                    if !$0 { 
-                        selectedEntryId = nil
-                        // Refresh entries when coming back from editor
-                        journalListViewModel.refresh()
-                    } 
-                }
-            )) {
-                if let entryId = selectedEntryId {
-                    JournalEditorView(entryId: entryId)
-                }
-            }
-            .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
-                Button("Sign Out", role: .destructive) {
-                    journalListViewModel.logout()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Are you sure you want to sign out?")
-            }
-        }
-        .onAppear {
-            journalListViewModel.loadEntries()
-            journalListViewModel.fetchQuote()
-            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
-                animateItems = true
-            }
-            startMoodPolling()
-            startInspirationPolling()
-        }
-        .onDisappear {
-            stopMoodPolling()
-            stopInspirationPolling()
-        }
-    }
-    
-    // MARK: - Mood Polling
-    
-    /// Start polling for mood score updates (for entries with AI-generated scores pending)
-    private func startMoodPolling() {
-        // Poll every 5 seconds to check for mood score updates
-        moodPollingTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
-            // Only refresh if there are entries with nil mood scores
-            let hasPendingMoods = journalListViewModel.entries.contains { $0.moodScore == nil }
-            if hasPendingMoods {
-                journalListViewModel.refresh()
-            }
-        }
-    }
-    
-    private func stopMoodPolling() {
-        moodPollingTimer?.invalidate()
-        moodPollingTimer = nil
-    }
-    
-    // MARK: - Inspiration Polling
-    
-    /// Start polling for inspiration quote updates (when quote is not found yet)
-    private func startInspirationPolling() {
-        // Poll every 10 seconds if no quote is available yet (more responsive)
-        inspirationPollingTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
-            // Refresh if quote is not found OR if we haven't loaded yet
-            if journalListViewModel.inspirationIsNotFound ||
-                (journalListViewModel.inspirationQuote == nil && !journalListViewModel.inspirationIsLoading) {
-                journalListViewModel.refreshQuote()
-            }
-        }
-    }
-    
-    private func stopInspirationPolling() {
-        inspirationPollingTimer?.invalidate()
-        inspirationPollingTimer = nil
-    }
-    
-    // MARK: - Header View
-    
-    private var headerView: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(headerTitle)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text(formattedDate)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-            
-            Spacer()
-            
-            // Profile button
-            Button(action: { showLogoutConfirmation = true }) {
-                ZStack {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 44, height: 44)
-                    
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 60)
-        .padding(.bottom, 8)
-        .opacity(animateItems ? 1 : 0)
-        .offset(y: animateItems ? 0 : -20)
-    }
-    
-    // MARK: - Journal List
-    
-    private var journalListView: some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 16) {
-                // Inspirational quote section
-                InspirationalQuoteView(journalListViewModel: journalListViewModel)
-                    .padding(.top, 4)
-                    .opacity(animateItems ? 1 : 0)
-                    .offset(y: animateItems ? 0 : 20)
-                    .animation(
-                        .spring(response: 0.6, dampingFraction: 0.8).delay(0.1),
-                        value: animateItems
-                    )
-                
-                // New entry button
-                newEntryButton
-                    .opacity(animateItems ? 1 : 0)
-                    .offset(y: animateItems ? 0 : 30)
-                    .animation(
-                        .spring(response: 0.5, dampingFraction: 0.8).delay(0.2),
-                        value: animateItems
-                    )
-                
-                ForEach(Array(journalListViewModel.entries.enumerated()), id: \.element.id) { index, entry in
-                    JournalEntryCard(entry: entry) {
-                        selectedEntryId = entry.id
-                    }
-                    .opacity(animateItems ? 1 : 0)
-                    .offset(y: animateItems ? 0 : 30)
-                    .animation(
-                        .spring(response: 0.5, dampingFraction: 0.8)
-                        .delay(0.3 + Double(index) * 0.05),
-                        value: animateItems
-                    )
-                }
-                
-                // Load more indicator
-                if journalListViewModel.hasMore {
-                    loadMoreIndicator
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 100)
-        }
-        .refreshable {
-            journalListViewModel.refresh()
-            journalListViewModel.refreshQuote()
-        }
-    }
-    
-    // MARK: - New Entry Button
-    
-    private var newEntryButton: some View {
-        Button(action: createNewEntry) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.2, green: 0.6, blue: 0.4), Color(red: 0.15, green: 0.5, blue: 0.35)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 48, height: 48)
-                        .shadow(color: .green.opacity(0.4), radius: 12, x: 0, y: 6)
-                    
-                    if isCreatingEntry {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Image(systemName: "plus")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("New Entry")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                    
-                    Text("Start writing your thoughts")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.4))
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial.opacity(0.8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.3), .white.opacity(0.1)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
-        .disabled(isCreatingEntry)
-    }
-    
-    private func createNewEntry() {
-        guard !isCreatingEntry else { return }
-        isCreatingEntry = true
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let localDate = SharedModule.shared.parseLocalDate(iso: dateFormatter.string(from: Date()))
-        
-        journalListViewModel.createEntry(
-            title: nil,
-            body: nil,
-            entryDate: localDate
-        ) { journal in
-            isCreatingEntry = false
-            if let journal = journal {
-                selectedEntryId = journal.id
-                // Refresh inspiration after creating new entry (triggers regeneration on backend)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    journalListViewModel.refreshQuote()
-                }
-            }
-        }
-    }
-    
-    // MARK: - Empty State
-    
-    private var emptyStateView: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Show pending inspiration state even in empty view
-                InspirationPendingView()
-                    .padding(.top, 20)
-                
-                VStack(spacing: 32) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [Color.green.opacity(0.2), Color.clear],
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: 80
-                                )
-                            )
-                            .frame(width: 160, height: 160)
-                        
-                        Text("📔")
-                            .font(.system(size: 72))
-                    }
-                    
-                    VStack(spacing: 12) {
-                        Text("Start Your Journey")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Text("Your journal is empty.\nTap below to create your first entry.")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.6))
-                            .multilineTextAlignment(.center)
-                    }
-                    
-                    Button(action: createNewEntry) {
-                        HStack(spacing: 8) {
-                            if isCreatingEntry {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Image(systemName: "plus.circle.fill")
-                                Text("Create Entry")
-                            }
-                        }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 16)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.2, green: 0.5, blue: 0.3), Color(red: 0.15, green: 0.45, blue: 0.25)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        )
-                        .shadow(color: .green.opacity(0.4), radius: 20, x: 0, y: 10)
-                    }
-                    .buttonStyle(ScaleButtonStyle())
-                    .disabled(isCreatingEntry)
-                }
-                .padding(.top, 20)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 40)
-        }
-    }
-    
-    // MARK: - Loading View
-    
-    private var loadingView: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                .scaleEffect(1.5)
-            
-            Text("Loading your journal...")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.6))
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Load More
-    
-    private var loadMoreIndicator: some View {
-        Button(action: { journalListViewModel.loadMoreEntries() }) {
-            HStack(spacing: 8) {
-                if journalListViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Load More")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-        }
-        .disabled(journalListViewModel.isLoading)
-    }
-    
-    // MARK: - Helpers
-    
-    private var headerTitle: String {
-        if let username = journalListViewModel.currentUsername, !username.isEmpty {
-            return "\(username)'s Journal"
-        }
-        return "Journal"
-    }
-    
-    private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d"
-        return formatter.string(from: Date())
-    }
-}
-
-// MARK: - Journal Entry Card
 
 struct JournalEntryCard: View {
     let entry: JournalPreview
     let onTap: () -> Void
-    
-    @State private var isPressed = false
-    
+
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 12) {
-                // Header row
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(entry.title)
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(1)
-                        
+
                         Text(formatEntryDate(entry.entryDate))
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.5))
                     }
-                    
+
                     Spacer()
-                    
-                    // Mood indicator - shows AI loading animation when nil
+
                     MoodBadge(score: entry.moodScore.map { Int($0.intValue) })
                 }
-                
-                // Body preview with markdown rendering (strikethrough, bold, etc.)
+
                 if !entry.bodyPreview.isEmpty {
                     MarkdownRenderer(
                         entry.bodyPreview,
@@ -449,15 +32,14 @@ struct JournalEntryCard: View {
                         baseColor: .white.opacity(0.7)
                     )
                 }
-                
-                // Footer
+
                 HStack {
                     Text(formatTimeAgo(entry.updatedAt))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.4))
-                    
+
                     Spacer()
-                    
+
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.white.opacity(0.3))
@@ -483,12 +65,11 @@ struct JournalEntryCard: View {
         }
         .buttonStyle(ScaleButtonStyle())
     }
-    
+
     private func formatEntryDate(_ date: Kotlinx_datetimeLocalDate) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM d, yyyy"
-        
-        // Convert Kotlin LocalDate to Swift Date
+
         let calendar = Calendar.current
         let components = DateComponents(
             year: Int(date.year),
@@ -500,35 +81,30 @@ struct JournalEntryCard: View {
         }
         return "\(date.month) \(date.dayOfMonth), \(date.year)"
     }
-    
+
     private func formatTimeAgo(_ instant: Kotlinx_datetimeInstant) -> String {
         let epochSeconds = instant.epochSeconds
         let date = Date(timeIntervalSince1970: TimeInterval(epochSeconds))
-        
+
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
-// MARK: - Mood Badge
-
 struct MoodBadge: View {
     let score: Int?
-    
+
     var body: some View {
         AnimatedMoodBadge(score: score)
     }
 }
 
-// MARK: - Journal Background
-
 struct JournalBackground: View {
     @State private var animate = false
-    
+
     var body: some View {
         ZStack {
-            // Base gradient
             LinearGradient(
                 colors: [
                     Color(red: 0.06, green: 0.08, blue: 0.1),
@@ -539,8 +115,7 @@ struct JournalBackground: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-            
-            // Animated orbs
+
             Circle()
                 .fill(
                     RadialGradient(
@@ -553,7 +128,7 @@ struct JournalBackground: View {
                 .frame(width: 400, height: 400)
                 .offset(x: -100, y: animate ? -150 : -180)
                 .blur(radius: 60)
-            
+
             Circle()
                 .fill(
                     RadialGradient(
@@ -566,7 +141,7 @@ struct JournalBackground: View {
                 .frame(width: 300, height: 300)
                 .offset(x: 150, y: animate ? 200 : 230)
                 .blur(radius: 50)
-            
+
             Circle()
                 .fill(
                     RadialGradient(
@@ -588,19 +163,10 @@ struct JournalBackground: View {
     }
 }
 
-// MARK: - Scale Button Style
-
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
-}
-
-// MARK: - Preview
-
-@available(iOS 17.0, *)
-#Preview {
-    JournalListView()
 }
