@@ -32,7 +32,7 @@ This is the most common flow pattern. Other features follow the same shape.
 
 1. UI triggers an action.
    - Android: Compose screen calls a shared ViewModel method.
-   - iOS: SwiftUI view calls an adapter method which delegates to the shared ViewModel.
+   - iOS: SwiftUI view calls an observable shared ViewModel method.
 2. Shared ViewModel delegates to a Store.
    - Example: `JournalListViewModel.loadEntries()` calls `JournalStore.loadEntries()`.
 3. Store calls a Repository interface.
@@ -49,7 +49,7 @@ This is the most common flow pattern. Other features follow the same shape.
    - ViewModels expose UI state objects (`JournalListUiState`, etc.).
 8. UI re-renders with the updated state.
    - Android: `collectAsStateWithLifecycle()` on `StateFlow`.
-   - iOS: `FlowObserver` updates `@Published` properties on adapters.
+   - iOS: `@StateViewModel` / `@EnvironmentViewModel` observes observable shared ViewModels.
 
 ## Shared Module Architecture
 
@@ -157,40 +157,35 @@ iOS does not use Koin. Instead, it uses a Kotlin singleton that builds its own g
 
 This is why iOS does not call Koin. It calls `SharedModule.shared.createXViewModel()`.
 
-### `FlowObserver` bridges Kotlin Flow to Swift
+### KMP-ObservableViewModel bridge
 
-`FlowObserver` collects Kotlin `Flow` on the main dispatcher and invokes a Swift callback.
-It returns a `Cancellable` that must be cancelled to stop collection.
+iOS now uses `KMP-ObservableViewModel` instead of Swift adapters.
 
-### Swift Adapters
+- Shared wraps feature ViewModels in observable Kotlin classes:
+  - `ObservableAuthViewModel`
+  - `ObservableJournalListViewModel`
+  - `ObservableJournalEditorViewModel`
+  - `ObservableMoodInsightsViewModel`
+  - `ObservableProfileViewModel`
+- These wrappers expose SwiftUI-friendly fields and forward actions to existing shared ViewModels.
+- Wrappers are created via `SharedModule.shared.createObservableXViewModel()`.
+- SwiftUI reads these wrappers directly using:
+  - `@StateViewModel` for screen-owned lifecycle
+  - `@EnvironmentViewModel` for shared/global lifecycle
 
-Each shared ViewModel has a Swift adapter that:
-- Owns the shared ViewModel.
-- Subscribes to Kotlin flows with `FlowObserver`.
-- Exposes `@Published` properties for SwiftUI.
-- Cancels flow subscriptions and calls `viewModel.clear()` in `deinit`.
+### Type conversion patterns
 
-Current adapters:
-- `AuthViewModelAdapter`
-- `JournalListViewModelAdapter`
-- `JournalEditorViewModelAdapter`
-- `MoodInsightsViewModelAdapter`
-
-### Type Conversion Patterns
-
-Kotlin/Native types do not always map 1:1 to Swift types. The adapters handle this:
-- `KotlinBoolean` -> `Bool` using `.boolValue`.
-- `KotlinArray` -> Swift arrays using helper conversion.
+Kotlin/Native types do not always map 1:1 to Swift types:
+- Callback booleans may come as `KotlinBoolean`; convert using `.boolValue` when needed.
 - Kotlin `LocalDate` is created via `SharedModule.shared.parseLocalDate(iso:)`.
 - Kotlin `Instant` is converted using `epochSeconds` to create Swift `Date`.
 
 ### SwiftUI Ownership and Lifecycle
 
 Key rules to avoid leaks and unexpected updates:
-- Use `@StateObject` for adapters you want to keep alive for a screen’s lifetime.
-- Use `@EnvironmentObject` for global state like authentication.
-- Always let adapters deinit so they can cancel Flow observers and clear coroutines.
-- Avoid creating adapters inside view bodies without `@StateObject`.
+- Use `@StateViewModel` for screen-owned shared ViewModels.
+- Use `@EnvironmentViewModel` for global state like authentication.
+- Do not wrap shared ViewModels in per-feature Swift `ObservableObject` adapters unless absolutely necessary.
 
 ## Platform Differences That Affect Behavior
 
@@ -210,6 +205,6 @@ Key rules to avoid leaks and unexpected updates:
 5. Add or extend a Store in `shared/model/store`.
 6. Create a shared ViewModel in `shared/presentation/viewmodel`.
 7. Android: register the ViewModel in `composeApp/di/UiModule.kt`.
-8. iOS: create a Swift adapter and bind it to SwiftUI views.
+8. iOS: expose an observable shared ViewModel via `SharedModule` and bind it with `@StateViewModel` / `@EnvironmentViewModel`.
 
 This keeps Android and iOS behavior consistent while sharing the logic in Kotlin.

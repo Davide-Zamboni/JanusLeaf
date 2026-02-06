@@ -1,7 +1,9 @@
 import SwiftUI
+import Shared
+import KMPObservableViewModelSwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     @State private var showLogoutConfirmation = false
     
     var body: some View {
@@ -60,5 +62,5 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

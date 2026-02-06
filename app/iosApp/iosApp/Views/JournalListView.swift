@@ -1,10 +1,11 @@
 import SwiftUI
 import Shared
+import KMPObservableViewModelSwiftUI
 
 @available(iOS 17.0, *)
 struct JournalListView: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
-    @StateObject private var journalListViewModel = JournalListViewModelAdapter()
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
+    @StateViewModel private var journalListViewModel = SharedModule.shared.createObservableJournalListViewModel()
     
     @State private var selectedEntryId: String? = nil
     @State private var showLogoutConfirmation = false
@@ -263,11 +264,15 @@ struct JournalListView: View {
     private func createNewEntry() {
         guard !isCreatingEntry else { return }
         isCreatingEntry = true
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let localDate = SharedModule.shared.parseLocalDate(iso: dateFormatter.string(from: Date()))
         
         journalListViewModel.createEntry(
             title: nil,
             body: nil,
-            entryDate: Date()
+            entryDate: localDate
         ) { journal in
             isCreatingEntry = false
             if let journal = journal {
@@ -599,5 +604,5 @@ struct ScaleButtonStyle: ButtonStyle {
 @available(iOS 17.0, *)
 #Preview {
     JournalListView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

@@ -1,10 +1,12 @@
 import SwiftUI
+import Shared
+import KMPObservableViewModelSwiftUI
 
 // MARK: - Profile View
 
 @available(iOS 17.0, *)
 struct ProfileView: View {
-    @StateObject private var profileViewModel = ProfileViewModelAdapter()
+    @StateViewModel private var profileViewModel = SharedModule.shared.createObservableProfileViewModel()
     
     @State private var showLogoutConfirmation = false
     @State private var animateItems = false

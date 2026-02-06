@@ -1,11 +1,12 @@
 import SwiftUI
 import Shared
+import KMPObservableViewModelSwiftUI
 
 // MARK: - Main Tab View
 
 @available(iOS 17.0, *)
 struct MainTabView: View {
-    @StateObject private var journalListViewModel = JournalListViewModelAdapter()
+    @StateViewModel private var journalListViewModel = SharedModule.shared.createObservableJournalListViewModel()
     
     @State private var selectedTab: Int = 0
     @State private var isCreatingEntry = false
@@ -183,11 +184,15 @@ struct MainTabView: View {
         
         isCreatingEntry = true
         selectedTab = 0
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let localDate = SharedModule.shared.parseLocalDate(iso: dateFormatter.string(from: Date()))
         
         journalListViewModel.createEntry(
             title: nil,
             body: nil,
-            entryDate: Date()
+            entryDate: localDate
         ) { journal in
             DispatchQueue.main.async {
                 isCreatingEntry = false
@@ -268,8 +273,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
 
 @available(iOS 17.0, *)
 struct JournalTabContent: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
-    @ObservedObject var journalListViewModel: JournalListViewModelAdapter
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
+    let journalListViewModel: ObservableJournalListViewModel
     
     @Binding var navigateToEntry: String?
     @Binding var isEditorPresented: Bool
@@ -601,5 +606,5 @@ struct JournalTabContent: View {
 @available(iOS 17.0, *)
 #Preview {
     MainTabView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

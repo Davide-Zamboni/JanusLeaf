@@ -1,10 +1,14 @@
 import SwiftUI
 import Shared
+import KMPObservableViewModelCore
+import KMPObservableViewModelSwiftUI
+
+extension Kmp_observableviewmodel_coreViewModel: @retroactive ViewModel { }
 
 @main
 @available(iOS 17.0, *)
 struct JanusLeafApp: App {
-    @StateObject private var authViewModel = AuthViewModelAdapter()
+    @StateViewModel private var authViewModel = SharedModule.shared.createObservableAuthViewModel()
     
     init() {
         _ = SharedModule.shared
@@ -14,7 +18,7 @@ struct JanusLeafApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authViewModel)
+                .environmentViewModel(authViewModel)
         }
     }
 }

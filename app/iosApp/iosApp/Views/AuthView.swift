@@ -1,7 +1,9 @@
 import SwiftUI
+import Shared
+import KMPObservableViewModelSwiftUI
 
 struct AuthView: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     
     @State private var email = ""
     @State private var password = ""
@@ -106,7 +108,7 @@ struct AuthView: View {
                     keyboardType: .emailAddress
                 )
                 
-                if !email.isEmpty && !authViewModel.isValidEmail(email) {
+                if !email.isEmpty && !authViewModel.isValidEmail(email: email) {
                     ValidationHint(message: "Enter a valid email address")
                 }
             }
@@ -120,7 +122,7 @@ struct AuthView: View {
                         icon: "person.fill"
                     )
                     
-                    if !username.isEmpty && !authViewModel.isValidUsername(username) {
+                    if !username.isEmpty && !authViewModel.isValidUsername(username: username) {
                         ValidationHint(message: "Username must be 2-50 characters")
                     }
                 }
@@ -141,7 +143,7 @@ struct AuthView: View {
                     trailingAction: { showPassword.toggle() }
                 )
                 
-                if !password.isEmpty && !authViewModel.isValidPassword(password) {
+                if !password.isEmpty && !authViewModel.isValidPassword(password: password) {
                     ValidationHint(message: "Password must be at least 8 characters")
                 }
             }
@@ -251,11 +253,11 @@ struct AuthView: View {
     
     // MARK: - Validation
     private var isFormValid: Bool {
-        let emailValid = authViewModel.isValidEmail(email)
-        let passwordValid = authViewModel.isValidPassword(password)
+        let emailValid = authViewModel.isValidEmail(email: email)
+        let passwordValid = authViewModel.isValidPassword(password: password)
         
         if isRegistering {
-            let usernameValid = authViewModel.isValidUsername(username)
+            let usernameValid = authViewModel.isValidUsername(username: username)
             let passwordsMatch = password == confirmPassword
             return emailValid && passwordValid && usernameValid && passwordsMatch && !confirmPassword.isEmpty
         }
@@ -374,5 +376,5 @@ struct ValidationHint: View {
 
 #Preview {
     AuthView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

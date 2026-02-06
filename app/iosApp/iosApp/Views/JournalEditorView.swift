@@ -1,5 +1,9 @@
 import SwiftUI
 import Shared
+import KMPObservableViewModelSwiftUI
+
+private func toSwiftBool(_ value: Bool) -> Bool { value }
+private func toSwiftBool(_ value: KotlinBoolean) -> Bool { value.boolValue }
 
 @available(iOS 17.0, *)
 struct JournalEditorView: View {
@@ -7,7 +11,7 @@ struct JournalEditorView: View {
     
     let entryId: String
 
-    @StateObject private var editorViewModel: JournalEditorViewModelAdapter
+    @StateViewModel private var editorViewModel = SharedModule.shared.createObservableJournalEditorViewModel()
     
     @State private var title: String = ""
     @State private var bodyText: String = ""
@@ -31,11 +35,6 @@ struct JournalEditorView: View {
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
 
-    init(entryId: String) {
-        self.entryId = entryId
-        _editorViewModel = StateObject(wrappedValue: JournalEditorViewModelAdapter())
-    }
-    
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
@@ -220,7 +219,7 @@ struct JournalEditorView: View {
                     showStrikethrough: showStrikethrough
                 ) { newValue in
                     hasUnsavedBodyChanges = true
-                    editorViewModel.updateBody(newValue, for: entryId)
+                    editorViewModel.updateBody(body: newValue, entryId: entryId)
                 }
             }
             .padding(16)
@@ -253,7 +252,7 @@ struct JournalEditorView: View {
         
         // Save title first if changed, then handle body changes
         if hasTitleChanges {
-            editorViewModel.updateTitle(title, for: entryId) { _ in
+            editorViewModel.updateTitle(title: title, entryId: entryId) { _ in
                 if hasUnsavedBodyChanges {
                     editorViewModel.forceSave(entryId: entryId) { _ in dismiss() }
                 } else {
@@ -282,16 +281,16 @@ struct JournalEditorView: View {
     
     private func saveTitle() {
         guard !title.isEmpty, title != originalTitle else { return }
-        editorViewModel.updateTitle(title, for: entryId) { success in
-            if success {
+        editorViewModel.updateTitle(title: title, entryId: entryId) { success in
+            if toSwiftBool(success) {
                 self.originalTitle = self.title
             }
         }
     }
     
     private func deleteEntry() {
-        editorViewModel.deleteEntry(id: entryId) { success in
-            if success { dismiss() }
+        editorViewModel.deleteEntry(entryId: entryId) { success in
+            if toSwiftBool(success) { dismiss() }
         }
     }
     

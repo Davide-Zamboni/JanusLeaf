@@ -1,5 +1,6 @@
 import SwiftUI
 import Shared
+import KMPObservableViewModelSwiftUI
 
 // MARK: - Time Period
 
@@ -81,8 +82,8 @@ enum MoodHelpers {
 
 @available(iOS 17.0, *)
 struct MoodInsightsView: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
-    @StateObject private var moodInsightsViewModel = MoodInsightsViewModelAdapter()
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
+    @StateViewModel private var moodInsightsViewModel = SharedModule.shared.createObservableMoodInsightsViewModel()
     
     @State private var selectedPeriod: TimePeriod = .sixMonths
     @State private var moodData: [MoodDataPoint] = []
@@ -838,5 +839,5 @@ struct MoodCategoryRow: View {
 @available(iOS 17.0, *)
 #Preview {
     MoodInsightsView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }
