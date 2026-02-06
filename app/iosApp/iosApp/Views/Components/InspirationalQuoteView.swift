@@ -1,9 +1,10 @@
 import SwiftUI
+import Shared
 
 // MARK: - Inspirational Quote Card
 
 struct InspirationalQuoteView: View {
-    @ObservedObject var journalListViewModel: JournalListViewModelAdapter
+    let journalListViewModel: ObservableJournalListViewModel
     
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +21,7 @@ struct InspirationalQuoteView: View {
                 QuoteContentView(
                     quote: quote.quote,
                     tags: quote.tags.map { $0 },
-                    generatedInfo: journalListViewModel.formattedGeneratedDate()
+                    generatedInfo: formattedGeneratedDate(for: quote)
                 )
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .move(edge: .bottom)),
@@ -31,6 +32,23 @@ struct InspirationalQuoteView: View {
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: journalListViewModel.inspirationQuote?.id)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: journalListViewModel.inspirationIsNotFound)
         .animation(.easeInOut(duration: 0.3), value: journalListViewModel.inspirationIsLoading)
+    }
+
+    private func formattedGeneratedDate(for quote: InspirationalQuote) -> String {
+        let epochSeconds = quote.generatedAt.epochSeconds
+        let date = Date(timeIntervalSince1970: TimeInterval(epochSeconds))
+
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Generated today"
+        }
+        if calendar.isDateInYesterday(date) {
+            return "Generated yesterday"
+        }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return "Generated \(formatter.localizedString(for: date, relativeTo: Date()))"
     }
 }
 

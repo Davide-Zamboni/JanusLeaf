@@ -1,8 +1,10 @@
 import SwiftUI
+import Shared
+import KMPObservableViewModelSwiftUI
 
 @available(iOS 17.0, *)
 struct ContentView: View {
-    @EnvironmentObject var authViewModel: AuthViewModelAdapter
+    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     
     var body: some View {
         Group {
@@ -19,5 +21,5 @@ struct ContentView: View {
 @available(iOS 17.0, *)
 #Preview {
     ContentView()
-        .environmentObject(AuthViewModelAdapter())
+        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

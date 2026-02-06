@@ -92,6 +92,7 @@ kotlin {
 
                 // DI
                 api(libs.koin.core)
+                api(libs.kmp.observableviewmodel.core)
 
                 // Logging
                 api(libs.napier)
@@ -109,8 +110,20 @@ kotlin {
             implementation(libs.koin.android)
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+        iosMain {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+
+            dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
+        }
+
+        iosArm64Main {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+        }
+
+        iosSimulatorArm64Main {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
     }
 }

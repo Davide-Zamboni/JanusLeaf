@@ -20,50 +20,16 @@ import com.janusleaf.app.presentation.viewmodel.AuthViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalEditorViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableAuthViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableJournalEditorViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableJournalListViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableMoodInsightsViewModel
+import com.janusleaf.app.presentation.viewmodel.ObservableProfileViewModel
 import com.janusleaf.app.presentation.viewmodel.ProfileViewModel
 import com.janusleaf.app.presentation.viewmodel.WelcomeViewModel
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-
-interface Cancellable {
-    fun cancel()
-}
-
-private class FlowCancellable(private val job: Job) : Cancellable {
-    override fun cancel() {
-        job.cancel()
-    }
-}
-
-class FlowObserver {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    fun <T> observe(flow: Flow<T>, callback: (T) -> Unit): Cancellable {
-        val job = scope.launch {
-            try {
-                flow.collect { value -> callback(value) }
-            } catch (cancellationException: CancellationException) {
-                throw cancellationException
-            } catch (throwable: Throwable) {
-                Napier.e("Flow collection failed", throwable, tag = "FlowObserver")
-            }
-        }
-        return FlowCancellable(job)
-    }
-
-    fun cancel() {
-        scope.cancel()
-    }
-}
 
 object SharedModule {
     private val tokenStorage: TokenStorage by lazy { IosTokenStorage() }
@@ -81,14 +47,28 @@ object SharedModule {
 
     fun createAuthViewModel(): AuthViewModel = AuthViewModel(authStore)
 
+    fun createObservableAuthViewModel(): ObservableAuthViewModel = ObservableAuthViewModel(authStore)
+
     fun createJournalListViewModel(): JournalListViewModel =
         JournalListViewModel(authStore, journalStore, inspirationStore)
 
+    fun createObservableJournalListViewModel(): ObservableJournalListViewModel =
+        ObservableJournalListViewModel(createJournalListViewModel())
+
     fun createJournalEditorViewModel(): JournalEditorViewModel = JournalEditorViewModel(journalStore)
+
+    fun createObservableJournalEditorViewModel(): ObservableJournalEditorViewModel =
+        ObservableJournalEditorViewModel(createJournalEditorViewModel())
 
     fun createMoodInsightsViewModel(): MoodInsightsViewModel = MoodInsightsViewModel(journalStore)
 
+    fun createObservableMoodInsightsViewModel(): ObservableMoodInsightsViewModel =
+        ObservableMoodInsightsViewModel(createMoodInsightsViewModel())
+
     fun createProfileViewModel(): ProfileViewModel = ProfileViewModel(authStore, journalStore)
+
+    fun createObservableProfileViewModel(): ObservableProfileViewModel =
+        ObservableProfileViewModel(createProfileViewModel())
 
     fun createWelcomeViewModel(): WelcomeViewModel = WelcomeViewModel(authStore)
 
