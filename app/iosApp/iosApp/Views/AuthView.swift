@@ -3,7 +3,7 @@ import Shared
 import KMPObservableViewModelSwiftUI
 
 struct AuthView: View {
-    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
+    @StateViewModel private var authViewModel = SharedModule.shared.createObservableAuthFormViewModel()
     
     @State private var email = ""
     @State private var password = ""
@@ -376,5 +376,4 @@ struct ValidationHint: View {
 
 #Preview {
     AuthView()
-        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

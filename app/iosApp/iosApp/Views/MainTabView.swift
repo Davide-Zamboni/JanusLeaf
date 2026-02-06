@@ -273,7 +273,6 @@ struct LiquidGlassButtonStyle: ButtonStyle {
 
 @available(iOS 17.0, *)
 struct JournalTabContent: View {
-    @EnvironmentViewModel var authViewModel: ObservableAuthViewModel
     let journalListViewModel: ObservableJournalListViewModel
     
     @Binding var navigateToEntry: String?
@@ -328,7 +327,7 @@ struct JournalTabContent: View {
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
-                    authViewModel.logout()
+                    journalListViewModel.logout()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -552,7 +551,7 @@ struct JournalTabContent: View {
     // MARK: - Helpers
     
     private var headerTitle: String {
-        if let username = authViewModel.currentUsername, !username.isEmpty {
+        if let username = journalListViewModel.currentUsername, !username.isEmpty {
             return "\(username)'s Journal"
         }
         return "Journal"
@@ -606,5 +605,4 @@ struct JournalTabContent: View {
 @available(iOS 17.0, *)
 #Preview {
     MainTabView()
-        .environmentViewModel(SharedModule.shared.createObservableAuthViewModel())
 }

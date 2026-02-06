@@ -7,7 +7,7 @@ import com.janusleaf.app.model.cache.JournalCache
 import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
-import com.janusleaf.app.presentation.viewmodel.AuthViewModel
+import com.janusleaf.app.presentation.viewmodel.AuthFormViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalEditorViewModel
 import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
@@ -22,10 +22,10 @@ val uiModule = module {
     single { JournalStore(get(), get()) }
     single { InspirationStore(get(), get(), get(), get()) }
 
-    factory { AuthViewModel(get()) }
+    factory { AuthFormViewModel(get()) }
     factory { JournalListViewModel(get(), get(), get()) }
     factory { JournalEditorViewModel(get()) }
-    factory { MoodInsightsViewModel(get()) }
+    factory { MoodInsightsViewModel(get(), get()) }
     factory { ProfileViewModel(get(), get()) }
     factory { WelcomeViewModel(get()) }
 }

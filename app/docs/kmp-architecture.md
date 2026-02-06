@@ -162,7 +162,8 @@ This is why iOS does not call Koin. It calls `SharedModule.shared.createXViewMod
 iOS now uses `KMP-ObservableViewModel` instead of Swift adapters.
 
 - Shared wraps feature ViewModels in observable Kotlin classes:
-  - `ObservableAuthViewModel`
+  - `ObservableAuthFormViewModel`
+  - `ObservableSessionViewModel`
   - `ObservableJournalListViewModel`
   - `ObservableJournalEditorViewModel`
   - `ObservableMoodInsightsViewModel`
@@ -171,7 +172,7 @@ iOS now uses `KMP-ObservableViewModel` instead of Swift adapters.
 - Wrappers are created via `SharedModule.shared.createObservableXViewModel()`.
 - SwiftUI reads these wrappers directly using:
   - `@StateViewModel` for screen-owned lifecycle
-  - `@EnvironmentViewModel` for shared/global lifecycle
+  - `@EnvironmentViewModel` only when one observable ViewModel is intentionally shared by a subtree
 
 ### Type conversion patterns
 
@@ -184,7 +185,7 @@ Kotlin/Native types do not always map 1:1 to Swift types:
 
 Key rules to avoid leaks and unexpected updates:
 - Use `@StateViewModel` for screen-owned shared ViewModels.
-- Use `@EnvironmentViewModel` for global state like authentication.
+- Keep auth state inside each screen's own ViewModel instead of a global auth environment object.
 - Do not wrap shared ViewModels in per-feature Swift `ObservableObject` adapters unless absolutely necessary.
 
 ## Platform Differences That Affect Behavior
