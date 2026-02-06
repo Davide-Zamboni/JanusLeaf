@@ -10,6 +10,8 @@ A modern journaling app with a shared KMP module for data/domain/backend integra
 
 The app follows **Clean Architecture** principles. Shared domain/data lives in `:shared`, Android UI lives in `:composeApp`, and the iOS UI lives in `iosApp` (SwiftUI) while consuming the shared framework.
 
+For a detailed data-flow and iOS adapter deep dive, see `app/docs/kmp-architecture.md`.
+
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                     │
