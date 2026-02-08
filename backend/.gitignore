@@ -1,7 +1,6 @@
 # Gradle
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
 
 # IDE - IntelliJ IDEA
 # Ignore most .idea files except run configurations and code style
@@ -21,6 +20,7 @@ build/
 *.jar
 *.war
 *.ear
+!gradle/wrapper/gradle-wrapper.jar
 
 # Logs
 *.log
