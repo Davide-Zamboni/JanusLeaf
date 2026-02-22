@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,37 +23,40 @@ fun WelcomeScreen(
     userEmail: String?,
     onSignOut: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "🍃", style = MaterialTheme.typography.displayLarge)
-        Spacer(modifier = Modifier.size(12.dp))
-        Text(
-            text = "Welcome to JanusLeaf!",
-            style = MaterialTheme.typography.headlineLarge,
-            textAlign = TextAlign.Center
-        )
-        if (!userEmail.isNullOrBlank()) {
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = "🍃", style = MaterialTheme.typography.displayLarge)
+            Spacer(modifier = Modifier.size(12.dp))
             Text(
-                text = userEmail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Welcome to JanusLeaf!",
+                style = MaterialTheme.typography.headlineLarge,
+                textAlign = TextAlign.Center
             )
-        }
-        Spacer(modifier = Modifier.size(12.dp))
-        Text(
-            text = "You're successfully logged in.\nJournal features are ready for you.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.size(20.dp))
-        Button(onClick = onSignOut) {
-            Text("Sign Out")
+            if (!userEmail.isNullOrBlank()) {
+                Text(
+                    text = userEmail,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.size(12.dp))
+            Text(
+                text = "You're successfully logged in.\nJournal features are ready for you.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.size(20.dp))
+            Button(onClick = onSignOut) {
+                Text("Sign Out")
+            }
         }
     }
 }

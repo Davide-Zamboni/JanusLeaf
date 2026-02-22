@@ -9,7 +9,8 @@ data class JournalListUiState(
     val errorMessage: String? = null,
     val entries: List<JournalPreview> = emptyList(),
     val hasMore: Boolean = true,
-    val isCreatingEntry: Boolean = false
+    val isCreatingEntry: Boolean = false,
+    val pendingCreatedEntryId: String? = null
 )
 
 data class JournalEditorUiState(
@@ -17,7 +18,8 @@ data class JournalEditorUiState(
     val errorMessage: String? = null,
     val entry: Journal? = null,
     val isSaving: Boolean = false,
-    val lastSavedAtEpochMillis: Long? = null
+    val lastSavedAtEpochMillis: Long? = null,
+    val pendingNavigateBack: Boolean = false
 )
 
 data class MoodInsightsUiState(

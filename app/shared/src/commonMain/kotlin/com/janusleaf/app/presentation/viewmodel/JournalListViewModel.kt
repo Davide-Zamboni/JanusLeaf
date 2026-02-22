@@ -2,7 +2,6 @@ package com.janusleaf.app.presentation.viewmodel
 
 import com.janusleaf.app.domain.model.InspirationError
 import com.janusleaf.app.domain.model.InspirationResult
-import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalResult
 import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
@@ -105,8 +104,7 @@ class JournalListViewModel(
     fun createEntry(
         title: String? = null,
         body: String? = null,
-        entryDate: LocalDate? = null,
-        onComplete: (Journal?) -> Unit = {}
+        entryDate: LocalDate? = null
     ) {
         if (_uiState.value.isCreatingEntry) return
         launchSafely(
@@ -115,26 +113,38 @@ class JournalListViewModel(
                 _uiState.update {
                     it.copy(isCreatingEntry = false, errorMessage = "Unable to create an entry right now.")
                 }
-                onComplete(null)
             }
         ) {
-            _uiState.update { it.copy(isCreatingEntry = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isCreatingEntry = true,
+                    errorMessage = null,
+                    pendingCreatedEntryId = null
+                )
+            }
             when (val result = journalStore.createEntry(title, body, entryDate)) {
                 is JournalResult.Success -> {
-                    _uiState.update { it.copy(isCreatingEntry = false) }
-                    onComplete(result.data)
+                    _uiState.update {
+                        it.copy(
+                            isCreatingEntry = false,
+                            pendingCreatedEntryId = result.data.id
+                        )
+                    }
                 }
 
                 is JournalResult.Error -> {
                     _uiState.update {
                         it.copy(isCreatingEntry = false, errorMessage = result.error.toUserMessage())
                     }
-                    onComplete(null)
                 }
 
                 is JournalResult.Loading -> Unit
             }
         }
+    }
+
+    fun consumeCreatedEntryNavigation() {
+        _uiState.update { it.copy(pendingCreatedEntryId = null) }
     }
 
     fun fetchQuote() {

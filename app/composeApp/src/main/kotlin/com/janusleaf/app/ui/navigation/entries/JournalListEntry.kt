@@ -1,5 +1,8 @@
 package com.janusleaf.app.ui.navigation.entries
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.janusleaf.app.ui.navigation.JournalListNavKey
@@ -14,8 +17,22 @@ fun EntryProviderScope<NavKey>.journalListEntry(
 ) {
     entry<JournalListNavKey> {
         val viewModel: JournalListViewModel = rememberKmpViewModel()
+        val authState by viewModel.authState.collectAsStateWithLifecycle()
+        val journalState by viewModel.uiState.collectAsStateWithLifecycle()
+        val inspirationState by viewModel.inspirationState.collectAsStateWithLifecycle()
+        LaunchedEffect(journalState.pendingCreatedEntryId) {
+            val entryId = journalState.pendingCreatedEntryId ?: return@LaunchedEffect
+            onEntryClick(entryId)
+            viewModel.consumeCreatedEntryNavigation()
+        }
         JournalListScreen(
-            viewModel = viewModel,
+            authState = authState,
+            journalState = journalState,
+            inspirationState = inspirationState,
+            loadEntries = viewModel::loadEntries,
+            fetchQuote = viewModel::fetchQuote,
+            createEntry = viewModel::createEntry,
+            loadMoreEntries = viewModel::loadMoreEntries,
             onEntryClick = onEntryClick,
             onProfileClick = onProfileClick,
             onNavigateToJournal = onNavigateToJournal,

@@ -55,8 +55,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.domain.model.JournalPreview
+import com.janusleaf.app.presentation.state.MoodInsightsUiState
 import com.janusleaf.app.ui.components.MainBottomBar
 import com.janusleaf.app.ui.components.MainTab
 import com.janusleaf.app.ui.preview.PreviewSamples
@@ -64,7 +64,6 @@ import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.ui.util.formatAxisDate
 import com.janusleaf.app.ui.util.formatShortDate
 import com.janusleaf.app.ui.util.moodColor
-import com.janusleaf.app.presentation.viewmodel.MoodInsightsViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -90,16 +89,16 @@ private data class MoodDataPoint(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoodInsightsScreen(
-    viewModel: MoodInsightsViewModel,
+    uiState: MoodInsightsUiState,
+    loadEntries: () -> Unit,
     onProfileClick: () -> Unit,
     onNavigateToJournal: () -> Unit,
     onNavigateToInsights: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isPreview = LocalInspectionMode.current
     LaunchedEffect(Unit) {
         if (!isPreview && uiState.entries.isEmpty()) {
-            viewModel.loadEntries()
+            loadEntries()
         }
     }
 
@@ -541,9 +540,12 @@ private fun LocalDate.toJava(): java.time.LocalDate {
 @Composable
 private fun MoodInsightsPreview() {
     JanusLeafTheme {
-        MoodInsightsContent(
-            entries = PreviewSamples.journalPreviewList(),
-            onProfileClick = {}
+        MoodInsightsScreen(
+            uiState = MoodInsightsUiState(entries = PreviewSamples.journalPreviewList()),
+            loadEntries = {},
+            onProfileClick = {},
+            onNavigateToJournal = {},
+            onNavigateToInsights = {}
         )
     }
 }

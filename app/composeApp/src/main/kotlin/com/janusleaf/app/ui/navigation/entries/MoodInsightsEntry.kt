@@ -1,5 +1,7 @@
 package com.janusleaf.app.ui.navigation.entries
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.janusleaf.app.ui.navigation.MoodInsightsNavKey
@@ -13,8 +15,10 @@ fun EntryProviderScope<NavKey>.moodInsightsEntry(
 ) {
     entry<MoodInsightsNavKey> {
         val viewModel: MoodInsightsViewModel = rememberKmpViewModel()
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         MoodInsightsScreen(
-            viewModel = viewModel,
+            uiState = uiState,
+            loadEntries = viewModel::loadEntries,
             onProfileClick = onProfileClick,
             onNavigateToJournal = onNavigateToJournal,
             onNavigateToInsights = onNavigateToInsights

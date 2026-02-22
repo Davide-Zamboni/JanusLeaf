@@ -22,10 +22,12 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,29 +43,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.ui.preview.PreviewSamples
 import com.janusleaf.app.ui.theme.JanusLeafTheme
 import com.janusleaf.app.model.store.state.AuthUiState
-import com.janusleaf.app.presentation.viewmodel.AuthFormViewModel
 
 @Composable
-fun AuthScreen(viewModel: AuthFormViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    AuthScreenContent(
-        uiState = uiState,
-        isValidEmail = viewModel::isValidEmail,
-        isValidPassword = viewModel::isValidPassword,
-        isValidUsername = viewModel::isValidUsername,
-        onLogin = viewModel::login,
-        onRegister = viewModel::register,
-        onClearError = viewModel::clearError
-    )
-}
-
-@Composable
-fun AuthScreenContent(
+fun AuthScreen(
     uiState: AuthUiState,
     isValidEmail: (String) -> Boolean,
     isValidPassword: (String) -> Boolean,
@@ -82,10 +67,13 @@ fun AuthScreenContent(
 
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+    ){
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(it)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -108,7 +96,8 @@ fun AuthScreenContent(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -138,11 +127,20 @@ fun AuthScreenContent(
                                 value = username,
                                 onValueChange = { username = it },
                                 label = { Text("Username") },
-                                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Person,
+                                        contentDescription = null
+                                    )
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
-                            AnimatedVisibility(visible = username.isNotEmpty() && !isValidUsername(username)) {
+                            AnimatedVisibility(
+                                visible = username.isNotEmpty() && !isValidUsername(
+                                    username
+                                )
+                            ) {
                                 ValidationHint("Username must be 2-50 characters")
                             }
                         }
@@ -154,7 +152,9 @@ fun AuthScreenContent(
                         label = { Text("Password") },
                         leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
                         trailingIcon = {
-                            androidx.compose.material3.IconButton(onClick = { showPassword = !showPassword }) {
+                            androidx.compose.material3.IconButton(onClick = {
+                                showPassword = !showPassword
+                            }) {
                                 Icon(
                                     if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                     contentDescription = null
@@ -175,9 +175,16 @@ fun AuthScreenContent(
                                 value = confirmPassword,
                                 onValueChange = { confirmPassword = it },
                                 label = { Text("Confirm Password") },
-                                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Lock,
+                                        contentDescription = null
+                                    )
+                                },
                                 trailingIcon = {
-                                    androidx.compose.material3.IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
+                                    androidx.compose.material3.IconButton(onClick = {
+                                        showConfirmPassword = !showConfirmPassword
+                                    }) {
                                         Icon(
                                             if (showConfirmPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                             contentDescription = null
@@ -197,8 +204,8 @@ fun AuthScreenContent(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val isFormValid = isValidEmail(email) &&
-                        isValidPassword(password) &&
-                        (!isRegistering || (isValidUsername(username) && confirmPassword == password && confirmPassword.isNotEmpty()))
+                            isValidPassword(password) &&
+                            (!isRegistering || (isValidUsername(username) && confirmPassword == password && confirmPassword.isNotEmpty()))
 
                     Button(
                         onClick = {
@@ -285,11 +292,11 @@ private fun ValidationHint(message: String) {
 @Composable
 private fun AuthScreenPreview() {
     JanusLeafTheme {
-        AuthScreenContent(
-            uiState = PreviewSamples.authStateLoggedOut(),
-            isValidEmail = { it.contains("@") },
-            isValidPassword = { it.length >= 8 },
-            isValidUsername = { it.length >= 2 },
+        AuthScreen(
+            uiState = PreviewSamples.authStateLoggedIn(),
+            isValidEmail = { true },
+            isValidPassword = {true },
+            isValidUsername = { true},
             onLogin = { _, _ -> },
             onRegister = { _, _, _ -> },
             onClearError = {}

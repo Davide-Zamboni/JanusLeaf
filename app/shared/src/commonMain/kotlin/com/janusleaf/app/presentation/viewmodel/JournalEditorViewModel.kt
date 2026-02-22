@@ -1,6 +1,5 @@
 package com.janusleaf.app.presentation.viewmodel
 
-import com.janusleaf.app.domain.model.Journal
 import com.janusleaf.app.domain.model.JournalResult
 import com.janusleaf.app.model.store.JournalStore
 import com.janusleaf.app.presentation.state.JournalEditorUiState
@@ -55,27 +54,19 @@ class JournalEditorViewModel(
             it.copy(
                 entry = null,
                 isLoading = false,
-                isSaving = false
+                isSaving = false,
+                pendingNavigateBack = false
             )
         }
     }
 
     fun loadEntry(entryId: String) {
-        loadEntry(entryId, onSuccess = null, onError = null)
-    }
-
-    fun loadEntry(
-        entryId: String,
-        onSuccess: ((Journal) -> Unit)?,
-        onError: ((String) -> Unit)?
-    ) {
         launchSafely(
             operation = "loadEntry",
-            onError = { throwable ->
+            onError = {
                 _uiState.update {
                     it.copy(isLoading = false, errorMessage = "Unable to load this entry right now.")
                 }
-                onError?.invoke(throwable.message ?: "Unable to load this entry right now.")
             }
         ) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -83,13 +74,11 @@ class JournalEditorViewModel(
                 is JournalResult.Success -> {
                     currentVersion = result.data.version
                     _uiState.update { it.copy(isLoading = false) }
-                    onSuccess?.invoke(result.data)
                 }
 
                 is JournalResult.Error -> {
                     val message = result.error.toUserMessage()
                     _uiState.update { it.copy(isLoading = false, errorMessage = message) }
-                    onError?.invoke(message)
                 }
 
                 is JournalResult.Loading -> Unit
@@ -106,180 +95,101 @@ class JournalEditorViewModel(
         }
     }
 
-    fun updateBody(
-        id: String,
-        body: String,
-        expectedVersion: Long?,
-        onSuccess: (Long) -> Unit,
-        onError: (String) -> Unit
-    ) {
+    fun updateTitle(entryId: String, title: String) {
+        if (title.isBlank()) return
         launchSafely(
-            operation = "updateBody",
-            onError = {
-                _uiState.update { state ->
-                    state.copy(isSaving = false, errorMessage = "Unable to save your entry right now.")
-                }
-                onError("Unable to save your entry right now.")
-            }
-        ) {
-            _uiState.update { it.copy(isSaving = true, errorMessage = null) }
-            when (
-                val result = journalStore.updateBody(
-                    id = id,
-                    body = body,
-                    expectedVersion = expectedVersion ?: currentVersion
-                )
-            ) {
-                is JournalResult.Success -> {
-                    currentVersion = result.data.version
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            lastSavedAtEpochMillis = result.data.updatedAt.toEpochMilliseconds()
-                        )
-                    }
-                    pendingBodyUpdate = null
-                    onSuccess(result.data.version)
-                }
-
-                is JournalResult.Error -> {
-                    val message = result.error.toUserMessage()
-                    _uiState.update { it.copy(isSaving = false, errorMessage = message) }
-                    onError(message)
-                }
-
-                is JournalResult.Loading -> Unit
-            }
-        }
-    }
-
-    fun updateTitle(entryId: String, title: String, onComplete: (Boolean) -> Unit = {}) {
-        updateMetadata(
-            id = entryId,
-            title = title,
-            moodScore = null,
-            expectedVersion = currentVersion,
-            onSuccess = {
-                currentVersion = it.version
-                onComplete(true)
-            },
-            onError = {
-                onComplete(false)
-            }
-        )
-    }
-
-    fun updateMoodScore(entryId: String, score: Int, onComplete: (Boolean) -> Unit = {}) {
-        updateMetadata(
-            id = entryId,
-            title = null,
-            moodScore = score,
-            expectedVersion = currentVersion,
-            onSuccess = {
-                currentVersion = it.version
-                onComplete(true)
-            },
-            onError = {
-                onComplete(false)
-            }
-        )
-    }
-
-    fun updateMetadata(
-        id: String,
-        title: String?,
-        moodScore: Int?,
-        expectedVersion: Long?,
-        onSuccess: (Journal) -> Unit,
-        onError: (String) -> Unit
-    ) {
-        launchSafely(
-            operation = "updateMetadata",
+            operation = "updateTitle",
             onError = {
                 _uiState.update { state ->
                     state.copy(errorMessage = "Unable to save entry details right now.")
                 }
-                onError("Unable to save entry details right now.")
             }
         ) {
-            when (val result = journalStore.updateMetadata(id, title, moodScore, expectedVersion)) {
-                is JournalResult.Success -> {
-                    currentVersion = result.data.version
-                    onSuccess(result.data)
-                }
-
-                is JournalResult.Error -> {
-                    val message = result.error.toUserMessage()
-                    _uiState.update { it.copy(errorMessage = message) }
-                    onError(message)
-                }
-
-                is JournalResult.Loading -> Unit
-            }
+            updateMetadataInternal(
+                id = entryId,
+                title = title,
+                moodScore = null,
+                expectedVersion = currentVersion
+            )
         }
     }
 
-    fun forceSave(entryId: String, onComplete: (Boolean) -> Unit = {}) {
+    fun updateMoodScore(entryId: String, score: Int) {
+        launchSafely(
+            operation = "updateMoodScore",
+            onError = {
+                _uiState.update { state ->
+                    state.copy(errorMessage = "Unable to save entry details right now.")
+                }
+            }
+        ) {
+            updateMetadataInternal(
+                id = entryId,
+                title = null,
+                moodScore = score,
+                expectedVersion = currentVersion
+            )
+        }
+    }
+
+    fun forceSave(entryId: String) {
         launchSafely(
             operation = "forceSave",
             onError = {
                 _uiState.update { state ->
                     state.copy(isSaving = false, errorMessage = "Unable to save your entry right now.")
                 }
-                onComplete(false)
             }
         ) {
-            autoSaveJob?.cancel()
-            val body = pendingBodyUpdate ?: _uiState.value.entry?.body
-            if (body == null) {
-                onComplete(true)
-                return@launchSafely
+            forceSaveInternal(entryId)
+        }
+    }
+
+    fun requestClose(entryId: String, draftTitle: String) {
+        launchSafely(
+            operation = "requestClose",
+            onError = {
+                _uiState.update { state ->
+                    state.copy(isSaving = false, errorMessage = "Unable to save your entry right now.")
+                }
+            }
+        ) {
+            val persistedTitle = _uiState.value.entry?.title.orEmpty()
+            val hasTitleChanges = draftTitle.isNotBlank() && draftTitle != persistedTitle
+            val shouldNavigateBack = if (hasTitleChanges) {
+                updateMetadataInternal(
+                    id = entryId,
+                    title = draftTitle,
+                    moodScore = null,
+                    expectedVersion = currentVersion
+                )
+            } else {
+                forceSaveInternal(entryId)
             }
 
-            _uiState.update { it.copy(isSaving = true) }
-            when (val result = journalStore.updateBody(entryId, body, currentVersion)) {
-                is JournalResult.Success -> {
-                    currentVersion = result.data.version
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            lastSavedAtEpochMillis = result.data.updatedAt.toEpochMilliseconds()
-                        )
-                    }
-                    pendingBodyUpdate = null
-                    onComplete(true)
-                }
-
-                is JournalResult.Error -> {
-                    _uiState.update { it.copy(isSaving = false, errorMessage = result.error.toUserMessage()) }
-                    onComplete(false)
-                }
-
-                is JournalResult.Loading -> Unit
+            if (shouldNavigateBack) {
+                _uiState.update { it.copy(pendingNavigateBack = true) }
             }
         }
     }
 
-    fun deleteEntry(entryId: String, onComplete: (Boolean) -> Unit = {}) {
+    fun deleteEntry(entryId: String) {
         launchSafely(
             operation = "deleteEntry",
             onError = {
                 _uiState.update { state ->
                     state.copy(isLoading = false, errorMessage = "Unable to delete this entry right now.")
                 }
-                onComplete(false)
             }
         ) {
             _uiState.update { it.copy(isLoading = true) }
             when (val result = journalStore.deleteEntry(entryId)) {
                 is JournalResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false, entry = null) }
-                    onComplete(true)
+                    _uiState.update { it.copy(isLoading = false, entry = null, pendingNavigateBack = true) }
                 }
 
                 is JournalResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.error.toUserMessage()) }
-                    onComplete(false)
                 }
 
                 is JournalResult.Loading -> Unit
@@ -287,8 +197,64 @@ class JournalEditorViewModel(
         }
     }
 
+    fun consumeNavigateBack() {
+        _uiState.update { it.copy(pendingNavigateBack = false) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    private suspend fun updateMetadataInternal(
+        id: String,
+        title: String?,
+        moodScore: Int?,
+        expectedVersion: Long?
+    ): Boolean {
+        return when (val result = journalStore.updateMetadata(id, title, moodScore, expectedVersion)) {
+            is JournalResult.Success -> {
+                currentVersion = result.data.version
+                true
+            }
+
+            is JournalResult.Error -> {
+                val message = result.error.toUserMessage()
+                _uiState.update { it.copy(errorMessage = message) }
+                false
+            }
+
+            is JournalResult.Loading -> false
+        }
+    }
+
+    private suspend fun forceSaveInternal(entryId: String): Boolean {
+        autoSaveJob?.cancel()
+        val body = pendingBodyUpdate ?: _uiState.value.entry?.body
+        if (body == null) {
+            return true
+        }
+
+        _uiState.update { it.copy(isSaving = true) }
+        return when (val result = journalStore.updateBody(entryId, body, currentVersion)) {
+            is JournalResult.Success -> {
+                currentVersion = result.data.version
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        lastSavedAtEpochMillis = result.data.updatedAt.toEpochMilliseconds()
+                    )
+                }
+                pendingBodyUpdate = null
+                true
+            }
+
+            is JournalResult.Error -> {
+                _uiState.update { it.copy(isSaving = false, errorMessage = result.error.toUserMessage()) }
+                false
+            }
+
+            is JournalResult.Loading -> false
+        }
     }
 
     private suspend fun performAutoSave(entryId: String) {

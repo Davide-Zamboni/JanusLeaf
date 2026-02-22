@@ -1,5 +1,7 @@
 package com.janusleaf.app.ui.navigation.entries
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.janusleaf.app.ui.navigation.ProfileNavKey
@@ -11,8 +13,12 @@ fun EntryProviderScope<NavKey>.profileEntry(
 ) {
     entry<ProfileNavKey> {
         val viewModel: ProfileViewModel = rememberKmpViewModel()
+        val authState by viewModel.authState.collectAsStateWithLifecycle()
+        val entries by viewModel.entries.collectAsStateWithLifecycle()
         ProfileScreen(
-            viewModel = viewModel,
+            user = authState.user,
+            entries = entries,
+            onSignOut = viewModel::logout,
             onBack = onBack
         )
     }

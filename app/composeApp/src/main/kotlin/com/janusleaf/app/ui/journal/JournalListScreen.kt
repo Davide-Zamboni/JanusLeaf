@@ -29,13 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.janusleaf.app.domain.model.JournalPreview
 import com.janusleaf.app.ui.components.InspirationalQuoteCard
 import com.janusleaf.app.ui.components.MoodBadge
@@ -50,39 +48,39 @@ import com.janusleaf.app.ui.util.stripMarkdown
 import com.janusleaf.app.model.store.state.AuthUiState
 import com.janusleaf.app.presentation.state.InspirationUiState
 import com.janusleaf.app.presentation.state.JournalListUiState
-import com.janusleaf.app.presentation.viewmodel.JournalListViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun JournalListScreen(
-    viewModel: JournalListViewModel,
+    authState: AuthUiState,
+    journalState: JournalListUiState,
+    inspirationState: InspirationUiState,
+    loadEntries: () -> Unit,
+    fetchQuote: () -> Unit,
+    createEntry: () -> Unit,
+    loadMoreEntries: () -> Unit,
     onEntryClick: (String) -> Unit,
     onProfileClick: () -> Unit,
     onNavigateToJournal: () -> Unit,
     onNavigateToInsights: () -> Unit
 ) {
-    val authState by viewModel.authState.collectAsStateWithLifecycle()
-    val journalState by viewModel.uiState.collectAsStateWithLifecycle()
-    val inspirationState by viewModel.inspirationState.collectAsStateWithLifecycle()
     val isPreview = LocalInspectionMode.current
     LaunchedEffect(Unit) {
         if (!isPreview) {
             if (journalState.entries.isEmpty()) {
-                viewModel.loadEntries()
+                loadEntries()
             }
             if (inspirationState.quote == null && !inspirationState.isLoading) {
-                viewModel.fetchQuote()
+                fetchQuote()
             }
         }
     }
 
-    val createEntry: () -> Unit = createEntry@{
+    val createEntryAction: () -> Unit = createEntry@{
         if (journalState.isCreatingEntry) return@createEntry
-        viewModel.createEntry { entry ->
-            entry?.id?.let { onEntryClick(it) }
-        }
+        createEntry()
     }
 
     Scaffold(
@@ -94,7 +92,7 @@ fun JournalListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = createEntry) {
+            FloatingActionButton(onClick = createEntryAction) {
                 if (journalState.isCreatingEntry) {
                     CircularProgressIndicator(
                         strokeWidth = 2.dp,
@@ -113,8 +111,8 @@ fun JournalListScreen(
                 inspirationState = inspirationState,
                 onEntryClick = onEntryClick,
                 onProfileClick = onProfileClick,
-                onCreateEntry = createEntry,
-                onLoadMore = viewModel::loadMoreEntries
+                onCreateEntry = createEntryAction,
+                onLoadMore = loadMoreEntries
             )
         }
     }
@@ -310,14 +308,18 @@ private fun kotlinx.datetime.Instant.toJavaInstant(): java.time.Instant {
 @Composable
 private fun JournalListScreenPreview() {
     JanusLeafTheme {
-        JournalListContent(
+        JournalListScreen(
             authState = PreviewSamples.authStateLoggedIn(),
             journalState = PreviewSamples.journalListUiStateWithEntries(),
             inspirationState = PreviewSamples.inspirationUiStateWithQuote(),
+            loadEntries = {},
+            fetchQuote = {},
+            createEntry = {},
+            loadMoreEntries = {},
             onEntryClick = {},
             onProfileClick = {},
-            onCreateEntry = {},
-            onLoadMore = {}
+            onNavigateToJournal = {},
+            onNavigateToInsights = {}
         )
     }
 }
