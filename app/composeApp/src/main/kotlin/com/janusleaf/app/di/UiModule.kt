@@ -4,6 +4,8 @@ import com.janusleaf.app.model.cache.InMemoryInspirationCache
 import com.janusleaf.app.model.cache.InMemoryJournalCache
 import com.janusleaf.app.model.cache.InspirationCache
 import com.janusleaf.app.model.cache.JournalCache
+import com.janusleaf.app.data.repository.SessionDataRepositoryImpl
+import com.janusleaf.app.domain.repository.SessionDataRepository
 import com.janusleaf.app.model.store.AuthStore
 import com.janusleaf.app.model.store.InspirationStore
 import com.janusleaf.app.model.store.JournalStore
@@ -19,6 +21,7 @@ val uiModule = module {
     single { AuthStore(get(), get()) }
     single<JournalCache> { InMemoryJournalCache() }
     single<InspirationCache> { InMemoryInspirationCache() }
+    single<SessionDataRepository> { SessionDataRepositoryImpl(get(), get()) }
     single { JournalStore(get(), get()) }
     single { InspirationStore(get(), get(), get(), get()) }
 

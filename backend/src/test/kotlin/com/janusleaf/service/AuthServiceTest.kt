@@ -116,6 +116,33 @@ class AuthServiceTest {
         }
 
         @Test
+        fun `should trim email before duplicate check and save`() {
+            // Given
+            val request = RegisterRequest(
+                email = "  USER@EXAMPLE.COM  ",
+                username = "User",
+                password = "SecurePass123!"
+            )
+
+            every { userRepository.existsByEmail("user@example.com") } returns false
+            every { passwordEncoder.encode(any()) } returns "hashedPassword"
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { jwtTokenProvider.generateAccessToken(any(), any()) } returns "token"
+            every { jwtTokenProvider.generateRefreshToken(any(), any()) } returns "refresh"
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
+
+            // When
+            val response = authService.register(request)
+
+            // Then
+            response.user.email shouldBe "user@example.com"
+            verify { userRepository.existsByEmail("user@example.com") }
+            verify { userRepository.save(match { it.email == "user@example.com" }) }
+        }
+
+        @Test
         fun `should throw UserAlreadyExistsException when email exists`() {
             // Given
             val request = RegisterRequest(
@@ -206,6 +233,29 @@ class AuthServiceTest {
             // Given
             val request = LoginRequest(
                 email = "TEST@EXAMPLE.COM",
+                password = "correctPassword"
+            )
+
+            every { userRepository.findByEmail("test@example.com") } returns testUser
+            every { passwordEncoder.matches("correctPassword", "hashedPassword123") } returns true
+            every { jwtTokenProvider.generateAccessToken(any(), any()) } returns "token"
+            every { jwtTokenProvider.generateRefreshToken(any(), any()) } returns "refresh"
+            every { jwtTokenProvider.getAccessTokenExpirationMs() } returns 900000L
+            every { jwtTokenProvider.getExpirationFromToken("refresh") } returns Date(System.currentTimeMillis() + 604800000)
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
+
+            // When
+            authService.login(request)
+
+            // Then
+            verify { userRepository.findByEmail("test@example.com") }
+        }
+
+        @Test
+        fun `should trim email before login lookup`() {
+            // Given
+            val request = LoginRequest(
+                email = "  TEST@EXAMPLE.COM  ",
                 password = "correctPassword"
             )
 

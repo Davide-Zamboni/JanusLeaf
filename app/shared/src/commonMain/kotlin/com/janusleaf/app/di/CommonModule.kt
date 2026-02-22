@@ -19,6 +19,6 @@ val commonModule = module {
     single { JournalApiService(get(), getPlatformBaseUrl()) }
     single { InspirationApiService(get(), getPlatformBaseUrl()) }
 
-    single<AuthRepository> { AuthRepositoryImpl(get(), get()) }
+    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get()) }
     single<JournalRepository> { JournalRepositoryImpl(get(), get(), get()) }
 }

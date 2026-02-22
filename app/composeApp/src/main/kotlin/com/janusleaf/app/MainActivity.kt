@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -30,9 +31,7 @@ import com.janusleaf.app.ui.navigation.entries.moodInsightsEntry
 import com.janusleaf.app.ui.navigation.entries.profileEntry
 import com.janusleaf.app.ui.navigation.entries.welcomeEntry
 import com.janusleaf.app.ui.theme.JanusLeafTheme
-import com.janusleaf.app.model.store.AuthStore
-import com.janusleaf.app.model.store.InspirationStore
-import com.janusleaf.app.model.store.JournalStore
+import com.janusleaf.app.domain.repository.AuthRepository
 import org.koin.compose.koinInject
 
 class MainActivity : ComponentActivity() {
@@ -50,24 +49,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MainComposable() {
-    val authStore: AuthStore = koinInject()
-    val journalStore: JournalStore = koinInject()
-    val inspirationStore: InspirationStore = koinInject()
+    val authRepository: AuthRepository = koinInject()
 
-    val authState by authStore.uiState.collectAsStateWithLifecycle()
-    val startDestination: NavKey = if (authState.isAuthenticated) JournalListNavKey else AuthNavKey
+    val isAuthenticated by authRepository.observeAuthState()
+        .collectAsStateWithLifecycle(initialValue = false)
+    val startDestination: NavKey = if (isAuthenticated) JournalListNavKey else AuthNavKey
     val backStack = rememberNavBackStack(startDestination)
     val editorBackHandler = remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    LaunchedEffect(authState.isAuthenticated) {
-        if (!authState.isAuthenticated) {
-            journalStore.clearAll()
-            inspirationStore.clear()
-            resetBackStack(backStack, AuthNavKey)
-        } else {
-            resetBackStack(backStack, JournalListNavKey)
-        }
-    }
+    ResetBackStack(isAuthenticated, backStack)
 
     val entryDecorators: List<NavEntryDecorator<NavKey>> = listOf(
         rememberSaveableStateHolderNavEntryDecorator(),
@@ -114,14 +104,28 @@ private fun MainComposable() {
     )
 }
 
-private fun resetBackStack(backStack: MutableList<NavKey>, destination: NavKey) {
-    if (backStack.isEmpty()) {
-        backStack.add(destination)
-        return
+@Composable
+private fun ResetBackStack(
+    isAuthenticated: Boolean,
+    backStack: NavBackStack<NavKey>
+) {
+    LaunchedEffect(isAuthenticated) {
+        if (!isAuthenticated) {
+            backStack.reset(AuthNavKey)
+        } else {
+            backStack.reset(JournalListNavKey)
+        }
     }
-    backStack[0] = destination
-    if (backStack.size > 1) {
-        backStack.subList(1, backStack.size).clear()
+}
+
+private fun MutableList<NavKey>.reset(destination: NavKey) {
+    if (isEmpty()) {
+        add(destination)
+    } else {
+        this[0] = destination
+        if (size > 1) {
+            subList(1, size).clear()
+        }
     }
 }
 

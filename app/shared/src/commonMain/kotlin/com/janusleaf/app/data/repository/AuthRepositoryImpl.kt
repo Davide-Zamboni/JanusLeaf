@@ -7,6 +7,7 @@ import com.janusleaf.app.domain.model.AuthenticatedUser
 import com.janusleaf.app.domain.model.RefreshedToken
 import com.janusleaf.app.domain.model.User
 import com.janusleaf.app.domain.repository.AuthRepository
+import com.janusleaf.app.domain.repository.SessionDataRepository
 import com.janusleaf.app.domain.repository.TokenStorage
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,8 @@ import kotlinx.coroutines.flow.Flow
  */
 class AuthRepositoryImpl(
     private val apiService: AuthApiService,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val sessionDataRepository: SessionDataRepository
 ) : AuthRepository {
     
     override suspend fun register(
@@ -160,6 +162,7 @@ class AuthRepositoryImpl(
     
     override suspend fun clearAuthData() {
         tokenStorage.clearTokens()
+        sessionDataRepository.clearSessionData()
     }
     
     /**

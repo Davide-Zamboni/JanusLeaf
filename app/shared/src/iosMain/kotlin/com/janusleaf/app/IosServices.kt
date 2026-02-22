@@ -8,6 +8,7 @@ import com.janusleaf.app.data.remote.createApiHttpClient
 import com.janusleaf.app.data.remote.getPlatformBaseUrl
 import com.janusleaf.app.data.repository.AuthRepositoryImpl
 import com.janusleaf.app.data.repository.JournalRepositoryImpl
+import com.janusleaf.app.data.repository.SessionDataRepositoryImpl
 import com.janusleaf.app.domain.repository.AuthRepository
 import com.janusleaf.app.domain.repository.JournalRepository
 import com.janusleaf.app.domain.repository.TokenStorage
@@ -31,12 +32,17 @@ object SharedModule {
     private val authApi by lazy { AuthApiService(httpClient, getPlatformBaseUrl()) }
     private val journalApi by lazy { JournalApiService(httpClient, getPlatformBaseUrl()) }
     private val inspirationApi by lazy { InspirationApiService(httpClient, getPlatformBaseUrl()) }
-    private val authRepository: AuthRepository by lazy { AuthRepositoryImpl(authApi, tokenStorage) }
+    private val journalCache by lazy { InMemoryJournalCache() }
+    private val inspirationCache by lazy { InMemoryInspirationCache() }
+    private val sessionDataRepository by lazy { SessionDataRepositoryImpl(journalCache, inspirationCache) }
+    private val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(authApi, tokenStorage, sessionDataRepository)
+    }
     private val journalRepository: JournalRepository by lazy { JournalRepositoryImpl(journalApi, tokenStorage, authApi) }
     private val authStore: AuthStore by lazy { AuthStore(authRepository, tokenStorage) }
-    private val journalStore: JournalStore by lazy { JournalStore(journalRepository, InMemoryJournalCache()) }
+    private val journalStore: JournalStore by lazy { JournalStore(journalRepository, journalCache) }
     private val inspirationStore: InspirationStore by lazy {
-        InspirationStore(inspirationApi, authApi, tokenStorage, InMemoryInspirationCache())
+        InspirationStore(inspirationApi, authApi, tokenStorage, inspirationCache)
     }
 
     fun createAuthFormViewModel(): AuthFormViewModel = AuthFormViewModel(authStore)
