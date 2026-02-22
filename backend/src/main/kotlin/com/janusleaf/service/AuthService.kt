@@ -27,14 +27,16 @@ class AuthService(
 
     @Transactional
     fun register(request: RegisterRequest): AuthResponse {
+        val normalizedEmail = normalizeEmail(request.email)
+
         // Check if email already exists
-        if (userRepository.existsByEmail(request.email.lowercase())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw UserAlreadyExistsException("Email '${request.email}' is already registered")
         }
 
         // Create new user
         val user = User(
-            email = request.email.lowercase().trim(),
+            email = normalizedEmail,
             username = request.username.trim(),
             passwordHash = passwordEncoder.encode(request.password)
         )
@@ -47,7 +49,8 @@ class AuthService(
 
     @Transactional
     fun login(request: LoginRequest): AuthResponse {
-        val user = userRepository.findByEmail(request.email.lowercase())
+        val normalizedEmail = normalizeEmail(request.email)
+        val user = userRepository.findByEmail(normalizedEmail)
             ?: throw InvalidCredentialsException()
 
         if (!passwordEncoder.matches(request.password, user.passwordHash)) {
@@ -180,6 +183,8 @@ class AuthService(
         val hashBytes = digest.digest(token.toByteArray())
         return hashBytes.joinToString("") { "%02x".format(it) }
     }
+
+    private fun normalizeEmail(email: String): String = email.trim().lowercase()
 
     private fun User.toResponse() = UserResponse(
         id = id,
